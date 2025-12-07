@@ -19,6 +19,7 @@ final class OrbitCameraController(
   private var lastX: Int = 0
   private var lastY: Int = 0
   private var draggingButton: Int = -1
+  private val panFactor: Float = 0.015f
 
   updateCamera()
 
@@ -35,7 +36,7 @@ final class OrbitCameraController(
       pointer: Int,
       button: Int
   ): Boolean = {
-    if (button == Buttons.RIGHT) {
+    if (button == Buttons.RIGHT || button == Buttons.MIDDLE) {
       draggingButton = button
       lastX = screenX
       lastY = screenY
@@ -56,6 +57,25 @@ final class OrbitCameraController(
 
       yaw -= dx * 0.4f
       pitch = MathUtils.clamp(pitch + dy * 0.3f, 15f, 80f)
+
+      updateCamera()
+      lastX = screenX
+      lastY = screenY
+      true
+    } else if (draggingButton == Buttons.MIDDLE) {
+      val dx = screenX - lastX
+      val dy = screenY - lastY
+
+      val right = getRightDirection
+      val forward = getForwardDirection
+      val panSpeed = distance * panFactor
+
+      // Move target along the ground plane to pan the camera.
+      target.add(
+        (-dx * panSpeed) * right.x + (dy * panSpeed) * forward.x,
+        0f,
+        (-dx * panSpeed) * right.z + (dy * panSpeed) * forward.z
+      )
 
       updateCamera()
       lastX = screenX

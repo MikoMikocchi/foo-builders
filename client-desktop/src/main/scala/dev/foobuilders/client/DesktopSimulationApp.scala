@@ -10,33 +10,36 @@ import com.badlogic.gdx.graphics.g3d.{
   ModelBatch,
   ModelInstance
 }
-import com.badlogic.gdx.graphics.glutils.ShapeRenderer
 import com.badlogic.gdx.graphics.{Color, GL20, PerspectiveCamera}
 import com.badlogic.gdx.math.Vector3
 import com.badlogic.gdx.{ApplicationAdapter, Gdx, InputMultiplexer}
 import com.badlogic.gdx.graphics.VertexAttributes.Usage
 import dev.foobuilders.core.sim.Simulation
+import dev.foobuilders.core.world.WorldBounds
 import dev.foobuilders.shared.protocol.*
 
 final class DesktopSimulationApp(simulation: Simulation)
     extends ApplicationAdapter {
-  private var shapeRenderer: ShapeRenderer = _
+  private val world = simulation.world
   private var modelBatch: ModelBatch = _
   private var environment: Environment = _
   private var camera: PerspectiveCamera = _
   private var cameraController: OrbitCameraController = _
   private var desktopInput: DesktopInput = _
   private var entityModel: Model = _
+  private var chunkMesh: Option[ChunkMesher.Mesh] = None
 
   private var latestSnapshot: WorldSnapshot = simulation.snapshot()
 
   override def create(): Unit = {
-    shapeRenderer = new ShapeRenderer()
     modelBatch = new ModelBatch()
     environment = buildEnvironment()
-    camera = buildCamera()
-    cameraController =
-      new OrbitCameraController(camera, DesktopSimulationApp.GridCenter)
+    chunkMesh = ChunkMesher.build(world, DesktopSimulationApp.CellSize)
+    val focus = chunkMesh
+      .map(mesh => focusPoint(mesh.bounds))
+      .getOrElse(new Vector3(0f, 0f, 0f))
+    camera = buildCamera(focus)
+    cameraController = new OrbitCameraController(camera, focus)
     entityModel = buildEntityModel()
     desktopInput = new DesktopInput(simulation, cameraController)
 
@@ -68,7 +71,7 @@ final class DesktopSimulationApp(simulation: Simulation)
     env
   }
 
-  private def buildCamera(): PerspectiveCamera = {
+  private def buildCamera(target: Vector3): PerspectiveCamera = {
     val camera = new PerspectiveCamera(
       DesktopSimulationApp.CameraFov,
       Gdx.graphics.getWidth.toFloat,
@@ -77,11 +80,11 @@ final class DesktopSimulationApp(simulation: Simulation)
     camera.near = 0.1f
     camera.far = 500f
     camera.position.set(
-      DesktopSimulationApp.GridCenter.x + 8f,
+      target.x + 12f,
       DesktopSimulationApp.InitialCameraHeight,
-      DesktopSimulationApp.GridCenter.z + 16f
+      target.z + 24f
     )
-    camera.lookAt(DesktopSimulationApp.GridCenter)
+    camera.lookAt(target)
     camera.up.set(Vector3.Y)
     camera.update()
     camera
@@ -105,32 +108,11 @@ final class DesktopSimulationApp(simulation: Simulation)
     Gdx.gl.glEnable(GL20.GL_DEPTH_TEST)
     Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT | GL20.GL_DEPTH_BUFFER_BIT)
 
-    drawGrid()
-    drawEntities()
-  }
-
-  private def drawGrid(): Unit = {
-    val extent = DesktopSimulationApp.GridExtent
-    val cell = DesktopSimulationApp.CellSize
-    shapeRenderer.setProjectionMatrix(camera.combined)
-
-    shapeRenderer.begin(ShapeRenderer.ShapeType.Line)
-    shapeRenderer.setColor(0.25f, 0.45f, 0.7f, 1f)
-    (0 to DesktopSimulationApp.GridSize).foreach { i =>
-      val v = i * cell
-      shapeRenderer.line(v, 0f, 0f, v, 0f, extent)
-      shapeRenderer.line(0f, 0f, v, extent, 0f, v)
-    }
-
-    shapeRenderer.setColor(Color.RED)
-    shapeRenderer.line(0f, 0f, 0f, extent, 0f, 0f) // X axis
-    shapeRenderer.setColor(Color.YELLOW)
-    shapeRenderer.line(0f, 0f, 0f, 0f, 0f, extent) // Z axis
-    shapeRenderer.end()
-  }
-
-  private def drawEntities(): Unit = {
     modelBatch.begin(camera)
+    chunkMesh.foreach { mesh =>
+      modelBatch.render(mesh.terrain, environment)
+      modelBatch.render(mesh.grid)
+    }
     latestSnapshot.entities.foreach { entity =>
       val instance = new ModelInstance(entityModel)
       instance.transform.setToTranslation(
@@ -143,20 +125,25 @@ final class DesktopSimulationApp(simulation: Simulation)
     modelBatch.end()
   }
 
+  private def focusPoint(bounds: WorldBounds): Vector3 = {
+    val centerX = (bounds.minX + bounds.maxX + 1).toFloat * DesktopSimulationApp.CellSize / 2f
+    val centerZ = (bounds.minY + bounds.maxY + 1).toFloat * DesktopSimulationApp.CellSize / 2f
+    new Vector3(centerX, 0f, centerZ)
+  }
+
   override def dispose(): Unit = {
-    Option(shapeRenderer).foreach(_.dispose())
     Option(modelBatch).foreach(_.dispose())
     Option(entityModel).foreach(_.dispose())
+    chunkMesh.foreach { mesh =>
+      Option(mesh.terrain.model).foreach(_.dispose())
+      Option(mesh.grid.model).foreach(_.dispose())
+    }
   }
 }
 
 object DesktopSimulationApp {
-  val GridSize: Int = 64
   val CellSize: Float = 1f
-  val GridExtent: Float = GridSize * CellSize
-  val GridCenter: Vector3 = new Vector3(GridExtent / 2f, 0f, GridExtent / 2f)
   val EntityHeight: Float = 0.8f
   val CameraFov: Float = 67f
-  val InitialCameraHeight: Float = 32f
-  val WorldScale: Float = 64f
+  val InitialCameraHeight: Float = 38f
 }

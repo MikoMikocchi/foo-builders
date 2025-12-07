@@ -7,7 +7,7 @@ import dev.foobuilders.shared.protocol.*
 import scala.collection.mutable
 
 final class Simulation(
-    world: World,
+    val world: World,
     initialSeeds: Seq[EntitySeed] = Seq.empty
 ) {
   private var tick: Long = 0L
