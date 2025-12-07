@@ -2,6 +2,7 @@ package dev.foobuilders.client
 
 import com.badlogic.gdx.Input.Keys
 import com.badlogic.gdx.{Gdx, InputAdapter}
+import com.badlogic.gdx.math.Vector3
 import dev.foobuilders.client.DesktopSimulationApp
 import dev.foobuilders.core.sim.Simulation
 import dev.foobuilders.shared.math.Vec3
@@ -9,10 +10,12 @@ import dev.foobuilders.shared.protocol.{EntitySeed, GameCommand}
 
 final class DesktopInput(
     simulation: Simulation,
-    cameraController: OrbitCameraController
+    cameraController: OrbitCameraController,
+    getEntityPosition: String => Option[Vec3]
 ) extends InputAdapter {
   private val controlledId = "builder-1"
-  private val moveSpeed = 12.0
+  private val characterMoveSpeed = 12.0
+  private val cameraMoveSpeed = 30.0
   private var wPressed = false
   private var aPressed = false
   private var sPressed = false
@@ -22,30 +25,41 @@ final class DesktopInput(
     val forward = cameraController.getForwardDirection
     val right = cameraController.getRightDirection
 
-    var moveDelta = Vec3.Zero
+    cameraController.getMode match {
+      case CameraMode.Free =>
+        // WASD moves camera
+        val delta = new Vector3(0, 0, 0)
+        val speed = (cameraMoveSpeed * deltaSeconds).toFloat
 
-    if (wPressed) {
-      // Forward relative to camera
-      moveDelta =
-        moveDelta + Vec3(forward.x * moveSpeed, forward.z * moveSpeed, 0d)
-    }
-    if (sPressed) {
-      // Backward relative to camera
-      moveDelta =
-        moveDelta + Vec3(-forward.x * moveSpeed, -forward.z * moveSpeed, 0d)
-    }
-    if (dPressed) {
-      // Right relative to camera
-      moveDelta = moveDelta + Vec3(right.x * moveSpeed, right.z * moveSpeed, 0d)
-    }
-    if (aPressed) {
-      // Left relative to camera
-      moveDelta =
-        moveDelta + Vec3(-right.x * moveSpeed, -right.z * moveSpeed, 0d)
-    }
+        if (wPressed) delta.add(forward.x * speed, 0f, forward.z * speed)
+        if (sPressed) delta.add(-forward.x * speed, 0f, -forward.z * speed)
+        if (dPressed) delta.add(right.x * speed, 0f, right.z * speed)
+        if (aPressed) delta.add(-right.x * speed, 0f, -right.z * speed)
 
-    if (moveDelta.magnitude() > 0) {
-      push(moveDelta * deltaSeconds)
+        if (delta.len2() > 0) {
+          cameraController.moveTarget(delta)
+        }
+
+      case CameraMode.Follow(_) =>
+        // WASD moves character
+        var moveDelta = Vec3.Zero
+
+        if (wPressed) {
+          moveDelta = moveDelta + Vec3(forward.x * characterMoveSpeed, forward.z * characterMoveSpeed, 0d)
+        }
+        if (sPressed) {
+          moveDelta = moveDelta + Vec3(-forward.x * characterMoveSpeed, -forward.z * characterMoveSpeed, 0d)
+        }
+        if (dPressed) {
+          moveDelta = moveDelta + Vec3(right.x * characterMoveSpeed, right.z * characterMoveSpeed, 0d)
+        }
+        if (aPressed) {
+          moveDelta = moveDelta + Vec3(-right.x * characterMoveSpeed, -right.z * characterMoveSpeed, 0d)
+        }
+
+        if (moveDelta.magnitude() > 0) {
+          push(moveDelta * deltaSeconds)
+        }
     }
   }
 
@@ -55,6 +69,16 @@ final class DesktopInput(
         val id = s"drone-${System.currentTimeMillis().toHexString}"
         val position = Vec3(math.random() * 24, math.random() * 14, 1d)
         simulation.enqueue(GameCommand.Spawn(EntitySeed(id, position)))
+        true
+      case Keys.TAB =>
+        cameraController.toggleMode(controlledId)
+        true
+      case Keys.F =>
+        // Center on character and switch to Follow mode
+        getEntityPosition(controlledId).foreach { pos =>
+          cameraController.centerOn(pos)
+        }
+        cameraController.setMode(CameraMode.Follow(controlledId))
         true
       case Keys.W =>
         wPressed = true

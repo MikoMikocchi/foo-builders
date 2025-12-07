@@ -5,6 +5,12 @@ import com.badlogic.gdx.InputAdapter
 import com.badlogic.gdx.graphics.PerspectiveCamera
 import com.badlogic.gdx.math.MathUtils
 import com.badlogic.gdx.math.Vector3
+import dev.foobuilders.shared.math.Vec3
+
+enum CameraMode {
+  case Free
+  case Follow(entityId: String)
+}
 
 final class OrbitCameraController(
     camera: PerspectiveCamera,
@@ -20,6 +26,7 @@ final class OrbitCameraController(
   private var lastY: Int = 0
   private var draggingButton: Int = -1
   private val panFactor: Float = 0.015f
+  private var mode: CameraMode = CameraMode.Free
 
   updateCamera()
 
@@ -97,6 +104,41 @@ final class OrbitCameraController(
   }
 
   def getYaw: Float = yaw
+
+  def getMode: CameraMode = mode
+
+  def setMode(newMode: CameraMode): Unit = {
+    mode = newMode
+  }
+
+  def toggleMode(followEntityId: String): Unit = {
+    mode = mode match {
+      case CameraMode.Free          => CameraMode.Follow(followEntityId)
+      case CameraMode.Follow(_)     => CameraMode.Free
+    }
+  }
+
+  def moveTarget(delta: Vector3): Unit = {
+    if (mode == CameraMode.Free) {
+      target.add(delta)
+      updateCamera()
+    }
+  }
+
+  def updateFollowTarget(entityPos: Vec3): Unit = {
+    mode match {
+      case CameraMode.Follow(_) =>
+        // Convert from game coords (X,Y horizontal, Z up) to libGDX (X,Z horizontal, Y up)
+        target.set(entityPos.x.toFloat, entityPos.z.toFloat, entityPos.y.toFloat)
+        updateCamera()
+      case CameraMode.Free => // do nothing
+    }
+  }
+
+  def centerOn(entityPos: Vec3): Unit = {
+    target.set(entityPos.x.toFloat, entityPos.z.toFloat, entityPos.y.toFloat)
+    updateCamera()
+  }
 
   def getForwardDirection: Vector3 = {
     val yawRad = MathUtils.degreesToRadians * yaw

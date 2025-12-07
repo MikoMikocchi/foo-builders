@@ -41,7 +41,11 @@ final class DesktopSimulationApp(simulation: Simulation)
     camera = buildCamera(focus)
     cameraController = new OrbitCameraController(camera, focus)
     entityModel = buildEntityModel()
-    desktopInput = new DesktopInput(simulation, cameraController)
+    desktopInput = new DesktopInput(
+      simulation,
+      cameraController,
+      entityId => latestSnapshot.entities.find(_.id == entityId).map(_.position)
+    )
 
     val inputMultiplexer = new InputMultiplexer()
     inputMultiplexer.addProcessor(cameraController)
@@ -57,6 +61,15 @@ final class DesktopSimulationApp(simulation: Simulation)
     val events = simulation.step(deltaSeconds)
     events.collectFirst { case GameEvent.WorldAdvanced(snapshot) =>
       latestSnapshot = snapshot
+    }
+
+    // Update camera follow target if in Follow mode
+    cameraController.getMode match {
+      case CameraMode.Follow(entityId) =>
+        latestSnapshot.entities.find(_.id == entityId).foreach { entity =>
+          cameraController.updateFollowTarget(entity.position)
+        }
+      case CameraMode.Free => // camera target is moved by WASD
     }
 
     drawSnapshot()
