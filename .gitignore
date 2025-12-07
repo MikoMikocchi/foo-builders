@@ -1,0 +1,20 @@
+# Build
+**/build/
+/.gradle/
+
+# IDEs
+.idea/
+.vscode/
+.bsp/
+.bloop/
+.metals/
+*.iml
+*.ipr
+*.iws
+.metals/
+
+# OS
+.DS_Store
+
+# Logs
+*.log
