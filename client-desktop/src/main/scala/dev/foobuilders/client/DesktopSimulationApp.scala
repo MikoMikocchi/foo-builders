@@ -38,7 +38,7 @@ final class DesktopSimulationApp(simulation: Simulation)
     cameraController =
       new OrbitCameraController(camera, DesktopSimulationApp.GridCenter)
     entityModel = buildEntityModel()
-    desktopInput = new DesktopInput(simulation)
+    desktopInput = new DesktopInput(simulation, cameraController)
 
     val inputMultiplexer = new InputMultiplexer()
     inputMultiplexer.addProcessor(cameraController)
@@ -135,7 +135,7 @@ final class DesktopSimulationApp(simulation: Simulation)
       val instance = new ModelInstance(entityModel)
       instance.transform.setToTranslation(
         entity.position.x.toFloat * DesktopSimulationApp.CellSize,
-        DesktopSimulationApp.EntityHeight / 2f,
+        entity.position.z.toFloat * DesktopSimulationApp.CellSize + DesktopSimulationApp.EntityHeight / 2f,
         entity.position.y.toFloat * DesktopSimulationApp.CellSize
       )
       modelBatch.render(instance, environment)
@@ -151,12 +151,12 @@ final class DesktopSimulationApp(simulation: Simulation)
 }
 
 object DesktopSimulationApp {
-  val GridSize: Int = 16
+  val GridSize: Int = 64
   val CellSize: Float = 1f
   val GridExtent: Float = GridSize * CellSize
   val GridCenter: Vector3 = new Vector3(GridExtent / 2f, 0f, GridExtent / 2f)
   val EntityHeight: Float = 0.8f
   val CameraFov: Float = 67f
-  val InitialCameraHeight: Float = 18f
-  val WorldScale: Float = 16f
+  val InitialCameraHeight: Float = 32f
+  val WorldScale: Float = 64f
 }

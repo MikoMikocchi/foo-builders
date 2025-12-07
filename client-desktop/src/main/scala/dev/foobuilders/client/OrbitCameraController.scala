@@ -76,6 +76,23 @@ final class OrbitCameraController(
     false
   }
 
+  def getYaw: Float = yaw
+
+  def getForwardDirection: Vector3 = {
+    val yawRad = MathUtils.degreesToRadians * yaw
+    // Forward direction is from camera to target, projected onto horizontal plane
+    // Since camera looks at target, forward is opposite of camera's position relative to target
+    val forwardX = -math.sin(yawRad).toFloat
+    val forwardZ = -math.cos(yawRad).toFloat
+    new Vector3(forwardX, 0f, forwardZ).nor()
+  }
+
+  def getRightDirection: Vector3 = {
+    val forward = getForwardDirection
+    // Right is forward rotated 90 degrees clockwise (in horizontal plane)
+    new Vector3(-forward.z, 0f, forward.x).nor()
+  }
+
   private def updateCamera(): Unit = {
     val yawRad = MathUtils.degreesToRadians * yaw
     val pitchRad = MathUtils.degreesToRadians * pitch
@@ -91,4 +108,3 @@ final class OrbitCameraController(
     camera.update()
   }
 }
-

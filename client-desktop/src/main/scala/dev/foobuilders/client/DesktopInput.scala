@@ -4,22 +4,45 @@ import com.badlogic.gdx.Input.Keys
 import com.badlogic.gdx.{Gdx, InputAdapter}
 import dev.foobuilders.client.DesktopSimulationApp
 import dev.foobuilders.core.sim.Simulation
-import dev.foobuilders.shared.math.Vec2
+import dev.foobuilders.shared.math.Vec3
 import dev.foobuilders.shared.protocol.{EntitySeed, GameCommand}
 
-final class DesktopInput(simulation: Simulation) extends InputAdapter {
+final class DesktopInput(
+    simulation: Simulation,
+    cameraController: OrbitCameraController
+) extends InputAdapter {
   private val controlledId = "builder-1"
-  private val moveSpeed = 8.0
+  private val moveSpeed = 12.0
   private var wPressed = false
   private var aPressed = false
   private var sPressed = false
   private var dPressed = false
 
   def update(deltaSeconds: Double): Unit = {
-    val moveDelta = (if (dPressed) Vec2(moveSpeed, 0d) else Vec2.Zero) +
-      (if (aPressed) Vec2(-moveSpeed, 0d) else Vec2.Zero) +
-      (if (wPressed) Vec2(0d, -moveSpeed) else Vec2.Zero) +
-      (if (sPressed) Vec2(0d, moveSpeed) else Vec2.Zero)
+    val forward = cameraController.getForwardDirection
+    val right = cameraController.getRightDirection
+
+    var moveDelta = Vec3.Zero
+
+    if (wPressed) {
+      // Forward relative to camera
+      moveDelta =
+        moveDelta + Vec3(forward.x * moveSpeed, forward.z * moveSpeed, 0d)
+    }
+    if (sPressed) {
+      // Backward relative to camera
+      moveDelta =
+        moveDelta + Vec3(-forward.x * moveSpeed, -forward.z * moveSpeed, 0d)
+    }
+    if (dPressed) {
+      // Right relative to camera
+      moveDelta = moveDelta + Vec3(right.x * moveSpeed, right.z * moveSpeed, 0d)
+    }
+    if (aPressed) {
+      // Left relative to camera
+      moveDelta =
+        moveDelta + Vec3(-right.x * moveSpeed, -right.z * moveSpeed, 0d)
+    }
 
     if (moveDelta.magnitude() > 0) {
       push(moveDelta * deltaSeconds)
@@ -30,7 +53,7 @@ final class DesktopInput(simulation: Simulation) extends InputAdapter {
     keycode match {
       case Keys.SPACE =>
         val id = s"drone-${System.currentTimeMillis().toHexString}"
-        val position = Vec2(math.random() * 24, math.random() * 14)
+        val position = Vec3(math.random() * 24, math.random() * 14, 1d)
         simulation.enqueue(GameCommand.Spawn(EntitySeed(id, position)))
         true
       case Keys.W =>
@@ -73,11 +96,11 @@ final class DesktopInput(simulation: Simulation) extends InputAdapter {
       pointer: Int,
       button: Int
   ): Boolean = {
-    // Отключаем спавн по клику: управление кликом используется камерой.
+    // Disable spawn on click: click control is used by the camera.
     false
   }
 
-  private def push(delta: Vec2): Unit = {
+  private def push(delta: Vec3): Unit = {
     simulation.enqueue(GameCommand.AddImpulse(controlledId, delta))
   }
 }
