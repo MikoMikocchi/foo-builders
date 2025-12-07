@@ -9,6 +9,22 @@ import dev.foobuilders.shared.protocol.{EntitySeed, GameCommand}
 
 final class DesktopInput(simulation: Simulation) extends InputAdapter {
   private val controlledId = "builder-1"
+  private val moveSpeed = 8.0
+  private var wPressed = false
+  private var aPressed = false
+  private var sPressed = false
+  private var dPressed = false
+
+  def update(deltaSeconds: Double): Unit = {
+    val moveDelta = (if (dPressed) Vec2(moveSpeed, 0d) else Vec2.Zero) +
+      (if (aPressed) Vec2(-moveSpeed, 0d) else Vec2.Zero) +
+      (if (wPressed) Vec2(0d, -moveSpeed) else Vec2.Zero) +
+      (if (sPressed) Vec2(0d, moveSpeed) else Vec2.Zero)
+
+    if (moveDelta.magnitude() > 0) {
+      push(moveDelta * deltaSeconds)
+    }
+  }
 
   override def keyDown(keycode: Int): Boolean = {
     keycode match {
@@ -17,30 +33,48 @@ final class DesktopInput(simulation: Simulation) extends InputAdapter {
         val position = Vec2(math.random() * 24, math.random() * 14)
         simulation.enqueue(GameCommand.Spawn(EntitySeed(id, position)))
         true
-      case Keys.UP =>
-        push(Vec2(0d, 1.5d))
+      case Keys.W =>
+        wPressed = true
         true
-      case Keys.DOWN =>
-        push(Vec2(0d, -1.5d))
+      case Keys.A =>
+        aPressed = true
         true
-      case Keys.LEFT =>
-        push(Vec2(-1.5d, 0d))
+      case Keys.S =>
+        sPressed = true
         true
-      case Keys.RIGHT =>
-        push(Vec2(1.5d, 0d))
+      case Keys.D =>
+        dPressed = true
         true
       case _ => false
     }
   }
 
-  override def touchDown(screenX: Int, screenY: Int, pointer: Int, button: Int): Boolean = {
-    // Map logical screen coords directly into world space; on macOS the event coords match logical size.
-    val worldScale = DesktopSimulationApp.WorldScale.toDouble
-    val worldX = screenX.toDouble / worldScale
-    val worldY = (Gdx.graphics.getHeight() - screenY.toDouble) / worldScale
-    val id = s"probe-${System.nanoTime().toHexString}"
-    simulation.enqueue(GameCommand.Spawn(EntitySeed(id, Vec2(worldX, worldY))))
-    true
+  override def keyUp(keycode: Int): Boolean = {
+    keycode match {
+      case Keys.W =>
+        wPressed = false
+        true
+      case Keys.A =>
+        aPressed = false
+        true
+      case Keys.S =>
+        sPressed = false
+        true
+      case Keys.D =>
+        dPressed = false
+        true
+      case _ => false
+    }
+  }
+
+  override def touchDown(
+      screenX: Int,
+      screenY: Int,
+      pointer: Int,
+      button: Int
+  ): Boolean = {
+    // Отключаем спавн по клику: управление кликом используется камерой.
+    false
   }
 
   private def push(delta: Vec2): Unit = {
