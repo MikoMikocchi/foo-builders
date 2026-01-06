@@ -1,0 +1,35 @@
+plugins {
+    id 'scala'
+    id 'application'
+}
+
+repositories {
+    mavenCentral()
+    maven { url "https://oss.sonatype.org/content/repositories/snapshots/" }
+    maven { url "https://oss.sonatype.org/content/repositories/releases/" }
+}
+
+def gdxVersion = '1.13.0'
+
+dependencies {
+    implementation "org.scala-lang:scala3-library_3:3.3.3"
+    
+    implementation "com.badlogicgames.gdx:gdx:$gdxVersion"
+    implementation "com.badlogicgames.gdx:gdx-backend-lwjgl3:$gdxVersion"
+    implementation "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-desktop"
+}
+
+application {
+    mainClass = 'com.foobuilders.game.DesktopLauncher'
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
+}
+
+run {
+    if (System.getProperty('os.name').toLowerCase().contains('mac')) {
+        jvmArgs += "-XstartOnFirstThread"
+    }
+}

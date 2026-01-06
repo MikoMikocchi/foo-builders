@@ -1,0 +1,46 @@
+.gradle/
+build/
+out/
+.bsp/
+.scala-build/
+
+# IntelliJ IDEA
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# MacOS
+.DS_Store
+
+# Java
+*.class
+*.log
+*.ctxt
+.mtj.tmp/
+*.jar
+*.war
+*.nar
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+# LibGDX specific (assets generated, packed atlases usually go here if automated, but keeping simple for now)
+# android/libs
+# android/obj
+# ios/build
+# html/war
+# html/build
+
+# Visual Studio Code / Metals
+.metals/
+.bloop/
+target/
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+
