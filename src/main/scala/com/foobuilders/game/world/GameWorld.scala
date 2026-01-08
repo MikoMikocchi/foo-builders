@@ -1,19 +1,33 @@
 package com.foobuilders.game.world
 
 import com.foobuilders.game.world.blocks.BlockType
+import com.foobuilders.game.entities.GameUnit
 
-import com.badlogic.gdx.math.Vector3
-import com.badlogic.gdx.math.collision.Ray
-import com.foobuilders.game.world.blocks.BlockType
+import com.badlogic.gdx.math.{Vector3, Intersector}
+import com.badlogic.gdx.math.collision.{Ray, BoundingBox}
 import scala.util.control.Breaks._
+import scala.collection.mutable.ArrayBuffer
 
 class GameWorld(val width: Int, val height: Int, val depth: Int) {
 
   private val blocks = Array.ofDim[BlockType](width, height, depth)
+  val units = ArrayBuffer[GameUnit]()
+  private var nextUnitId = 1
 
   // Initialize with Air
   for (x <- 0 until width; y <- 0 until height; z <- 0 until depth) {
     blocks(x)(y)(z) = BlockType.Air
+  }
+
+  def update(delta: Float): Unit = {
+    units.foreach(_.update(delta))
+  }
+
+  def spawnUnit(position: Vector3): GameUnit = {
+    val unit = new GameUnit(nextUnitId, new Vector3(position))
+    nextUnitId += 1
+    units += unit
+    unit
   }
 
   def setBlock(x: Int, y: Int, z: Int, blockType: BlockType): Unit = {
@@ -46,6 +60,25 @@ class GameWorld(val width: Int, val height: Int, val depth: Int) {
     for (x <- 0 until platformWidth; z <- 0 until platformDepth) {
       setBlock(startX + x, 0, startZ + z, BlockType.Stone)
     }
+  }
+
+  def intersectUnit(ray: Ray): Option[GameUnit] = {
+    var closestUnit: Option[GameUnit] = None
+    var minDistance = Float.MaxValue
+
+    for (unit <- units) {
+      val position = unit.position
+      val radius = unit.radius
+      // Simple sphere intersection
+      if (Intersector.intersectRaySphere(ray, position, radius, null)) {
+        val distance = ray.origin.dst2(position)
+        if (distance < minDistance) {
+          minDistance = distance
+          closestUnit = Some(unit)
+        }
+      }
+    }
+    closestUnit
   }
 
   // Simple Ray-Voxel intersection (Digital Differential Analyzer - DDA style)
