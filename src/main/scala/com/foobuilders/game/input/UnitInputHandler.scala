@@ -8,6 +8,7 @@ import com.foobuilders.game.world.GameWorld
 import com.foobuilders.game.rendering.GameCamera
 import com.foobuilders.game.entities.GameUnit
 import scala.collection.mutable.ArrayBuffer
+import scala.util.Random
 
 class UnitInputHandler(world: GameWorld, camera: GameCamera) extends InputAdapter {
 
@@ -159,7 +160,26 @@ class UnitInputHandler(world: GameWorld, camera: GameCamera) extends InputAdapte
         }
 
         if (foundTarget) {
-          selectedUnits.foreach(_.moveTo(target))
+          if (selectedUnits.size > 1) {
+            // Scatter units randomly around the target
+            // Radius scales with sqrt of unit count to maintain density
+            val scatterRadius = Math.sqrt(selectedUnits.size).toFloat * 1.0f
+            
+            selectedUnits.foreach { unit =>
+              val angle = Random.nextDouble() * Math.PI * 2
+              // Use sqrt(random) for uniform distribution within circle, 
+              // but simple random is fine for "random point" feel requested
+              val dist = Random.nextDouble() * scatterRadius
+              
+              val offsetX = (Math.cos(angle) * dist).toFloat
+              val offsetZ = (Math.sin(angle) * dist).toFloat
+              
+              val unitTarget = target.cpy().add(offsetX, 0f, offsetZ)
+              unit.moveTo(unitTarget)
+            }
+          } else {
+            selectedUnits.foreach(_.moveTo(target))
+          }
         }
       }
     }

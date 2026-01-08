@@ -118,23 +118,37 @@ class WorldRenderer(world: GameWorld) {
     }
     modelBatch.end()
 
-    // 2. Render Selection Circles (3D)
-    renderSelectionCircles(camera)
+    // 2. Render Selection Circles (3D) and Path Lines
+    renderSelectionOverlays(camera)
 
     // 3. Render HP Bars (2D Screen)
     renderHPBars(camera)
   }
 
-  private def renderSelectionCircles(camera: Camera): Unit = {
+  private def renderSelectionOverlays(camera: Camera): Unit = {
     Gdx.gl.glEnable(GL20.GL_BLEND)
     Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA)
     Gdx.gl.glEnable(GL20.GL_DEPTH_TEST) // Ensure depth test is ON
 
     shapeRenderer.setProjectionMatrix(camera.combined)
     shapeRenderer.begin(ShapeType.Line)
-    shapeRenderer.setColor(0f, 1f, 0f, 0.8f)
 
     for (unit <- world.units if unit.selected) {
+      // 1. Draw Path Line if moving
+      if (unit.isMoving) {
+        shapeRenderer.setColor(Color.YELLOW)
+        shapeRenderer.line(unit.position, unit.targetPosition)
+
+        // Optional: Draw target cross/point
+        val t = unit.targetPosition
+        val s = 0.2f
+        shapeRenderer.line(t.x - s, t.y, t.z, t.x + s, t.y, t.z)
+        shapeRenderer.line(t.x, t.y, t.z - s, t.x, t.y, t.z + s)
+      }
+
+      // 2. Draw Selection Circle
+      shapeRenderer.setColor(0f, 1f, 0f, 0.8f)
+
       // Draw circle at feet
       // ShapeRenderer doesn't have 3D circle, we simulate with poly or ellipse on ground
       // XZ plane circle

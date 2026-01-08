@@ -21,6 +21,30 @@ class GameWorld(val width: Int, val height: Int, val depth: Int) {
 
   def update(delta: Float): Unit = {
     units.foreach(_.update(delta))
+    resolveCollisions()
+  }
+
+  private def resolveCollisions(): Unit = {
+    for (i <- 0 until units.length) {
+      val u1 = units(i)
+      for (j <- i + 1 until units.length) {
+        val u2 = units(j)
+        val dist = u1.position.dst(u2.position)
+        val minDist = u1.radius + u2.radius
+
+        if (dist < minDist && dist > 0.0001f) {
+          // Push apart
+          val overlap = minDist - dist
+          val pushDir = u1.position.cpy().sub(u2.position).nor()
+
+          // Split overlap/push between both units (0.5 each)
+          val pushVector = pushDir.scl(overlap * 0.5f)
+
+          u1.position.add(pushVector)
+          u2.position.sub(pushVector)
+        }
+      }
+    }
   }
 
   def spawnUnit(position: Vector3): GameUnit = {

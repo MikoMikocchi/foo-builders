@@ -9,9 +9,10 @@ class GameUnit(val id: Int, var position: Vector3) {
   val speed: Float = 5f
   val radius: Float = 0.5f // For collision/selection
 
-  private val targetPosition: Vector3 = new Vector3(position)
+  // Made public for rendering debug paths
+  val targetPosition: Vector3 = new Vector3(position)
   private val moveDirection: Vector3 = new Vector3()
-  private var isMoving: Boolean = false
+  var isMoving: Boolean = false
 
   def update(delta: Float): Unit = {
     if (isMoving) {
