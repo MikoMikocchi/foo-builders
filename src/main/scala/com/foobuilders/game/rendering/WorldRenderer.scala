@@ -65,17 +65,28 @@ class WorldRenderer(world: GameWorld) {
       models.put(blockType, model)
     }
 
-    // Unit Model (Blue Cylinder)
-    unitModel = modelBuilder.createCylinder(
-      0.8f,
-      1.8f,
-      0.8f,
-      16,
-      new com.badlogic.gdx.graphics.g3d.Material(
-        ColorAttribute.createDiffuse(Color.BLUE)
-      ),
-      Usage.Position | Usage.Normal
-    )
+    // Unit Model (Cone Body + Sphere Head)
+    modelBuilder.begin()
+
+    // Body (Cone)
+    val bodyNode = modelBuilder.node()
+    bodyNode.id = "body"
+    bodyNode.translation.set(0, 0.6f, 0) // Center of cone (height 1.2)
+
+    val bodyPart = modelBuilder.part("body", GL20.GL_TRIANGLES, Usage.Position | Usage.Normal,
+      new com.badlogic.gdx.graphics.g3d.Material(ColorAttribute.createDiffuse(Color.BLUE)))
+    bodyPart.cone(0.8f, 1.2f, 0.8f, 16)
+
+    // Head (Sphere)
+    val headNode = modelBuilder.node()
+    headNode.id = "head"
+    headNode.translation.set(0, 1.2f + 0.35f, 0) // Top of cone + radius
+
+    val headPart = modelBuilder.part("head", GL20.GL_TRIANGLES, Usage.Position | Usage.Normal,
+      new com.badlogic.gdx.graphics.g3d.Material(ColorAttribute.createDiffuse(Color.PINK)))
+    headPart.sphere(0.7f, 0.7f, 0.7f, 16, 16)
+
+    unitModel = modelBuilder.end()
   }
 
   // Rebuilds the visual representation (ModelInstances) from the World data
@@ -106,12 +117,10 @@ class WorldRenderer(world: GameWorld) {
     // but for dynamic units we create/update them.
     for (unit <- world.units) {
       val instance = new ModelInstance(unitModel)
-      // Unit pivot is bottom? Cylinder is centered.
-      // Unit position is foot?
-      // Cylinder height 1.8. Center at y + 0.9
+      // Unit pivot is now at feet (y=0 in model space)
       instance.transform.setToTranslation(
         unit.position.x,
-        unit.position.y + 0.9f,
+        unit.position.y,
         unit.position.z
       )
       modelBatch.render(instance, environment)
