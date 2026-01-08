@@ -128,6 +128,7 @@ class WorldRenderer(world: GameWorld) {
   private def renderSelectionCircles(camera: Camera): Unit = {
     Gdx.gl.glEnable(GL20.GL_BLEND)
     Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA)
+    Gdx.gl.glEnable(GL20.GL_DEPTH_TEST) // Ensure depth test is ON
 
     shapeRenderer.setProjectionMatrix(camera.combined)
     shapeRenderer.begin(ShapeType.Line)
@@ -153,6 +154,7 @@ class WorldRenderer(world: GameWorld) {
     }
     shapeRenderer.end()
     Gdx.gl.glDisable(GL20.GL_BLEND)
+    Gdx.gl.glDisable(GL20.GL_DEPTH_TEST)
   }
 
   private def renderHPBars(camera: Camera): Unit = {
