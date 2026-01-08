@@ -11,8 +11,8 @@ class GameCamera(viewportWidth: Float, viewportHeight: Float)
   val camera: PerspectiveCamera =
     new PerspectiveCamera(67, viewportWidth, viewportHeight)
 
-  camera.position.set(0f, 5f, 10f)
-  camera.lookAt(0f, 0f, 0f)
+  camera.position.set(50f, 30f, 80f)
+  camera.lookAt(50f, 0f, 50f)
   camera.near = 0.1f
   camera.far = 300f
   camera.update()
