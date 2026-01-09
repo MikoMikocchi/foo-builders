@@ -2,17 +2,22 @@ package com.foobuilders.game.world
 
 import com.foobuilders.game.world.blocks.BlockType
 import com.foobuilders.game.entities.GameUnit
+import com.foobuilders.game.physics.{PhysicsEngine, WorldProvider}
 
 import com.badlogic.gdx.math.{Vector3, Intersector}
 import com.badlogic.gdx.math.collision.{Ray, BoundingBox}
 import scala.util.control.Breaks._
 import scala.collection.mutable.ArrayBuffer
 
-class GameWorld(val width: Int, val height: Int, val depth: Int) {
+class GameWorld(val width: Int, val height: Int, val depth: Int)
+    extends WorldProvider {
 
   private val blocks = Array.ofDim[BlockType](width, height, depth)
   val units = ArrayBuffer[GameUnit]()
   private var nextUnitId = 1
+
+  // Physics
+  val physicsEngine = new PhysicsEngine(this)
 
   // Initialize with Air
   for (x <- 0 until width; y <- 0 until height; z <- 0 until depth) {
@@ -20,37 +25,18 @@ class GameWorld(val width: Int, val height: Int, val depth: Int) {
   }
 
   def update(delta: Float): Unit = {
+    // Update unit logic (AI, Input processing, applying local forces)
     units.foreach(_.update(delta))
-    resolveCollisions()
-  }
 
-  private def resolveCollisions(): Unit = {
-    for (i <- 0 until units.length) {
-      val u1 = units(i)
-      for (j <- i + 1 until units.length) {
-        val u2 = units(j)
-        val dist = u1.position.dst(u2.position)
-        val minDist = u1.radius + u2.radius
-
-        if (dist < minDist && dist > 0.0001f) {
-          // Push apart
-          val overlap = minDist - dist
-          val pushDir = u1.position.cpy().sub(u2.position).nor()
-
-          // Split overlap/push between both units (0.5 each)
-          val pushVector = pushDir.scl(overlap * 0.5f)
-
-          u1.position.add(pushVector)
-          u2.position.sub(pushVector)
-        }
-      }
-    }
+    // Update physics simulation
+    physicsEngine.update(delta)
   }
 
   def spawnUnit(position: Vector3): GameUnit = {
     val unit = new GameUnit(nextUnitId, new Vector3(position))
     nextUnitId += 1
     units += unit
+    physicsEngine.addBody(unit.physicsBody)
     unit
   }
 
@@ -60,26 +46,21 @@ class GameWorld(val width: Int, val height: Int, val depth: Int) {
     }
   }
 
-  def getBlock(x: Int, y: Int, z: Int): BlockType = {
+  // WorldProvider implementation
+  override def getBlock(x: Int, y: Int, z: Int): BlockType = {
     if (boundsCheck(x, y, z)) blocks(x)(y)(z) else BlockType.Air
   }
 
-  private def boundsCheck(x: Int, y: Int, z: Int): Boolean = {
+  def boundsCheck(x: Int, y: Int, z: Int): Boolean = {
     x >= 0 && x < width && y >= 0 && y < height && z >= 0 && z < depth
   }
 
   def generatePlatform(): Unit = {
-    // Generate 50x50x1 platform centered or starting at 0
-    // Prompt says "platform of blocks size 50x50x1".
-    // I will assume x and z are horizontal, y is vertical (standard LibGDX 3D).
-
     val platformWidth = 50
     val platformDepth = 50
-    val platformHeight = 1
 
     val startX = (width - platformWidth) / 2
     val startZ = (depth - platformDepth) / 2
-    // Place at y=0
 
     for (x <- 0 until platformWidth; z <- 0 until platformDepth) {
       setBlock(startX + x, 0, startZ + z, BlockType.Stone)
@@ -105,7 +86,7 @@ class GameWorld(val width: Int, val height: Int, val depth: Int) {
     closestUnit
   }
 
-  // Simple Ray-Voxel intersection (Digital Differential Analyzer - DDA style)
+  // Simple Ray-Voxel intersection
   def raycast(
       ray: Ray,
       maxDistance: Float

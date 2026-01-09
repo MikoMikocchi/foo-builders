@@ -1,37 +1,34 @@
 package com.foobuilders.game.entities
 
 import com.badlogic.gdx.math.Vector3
+import com.foobuilders.game.physics.{PhysicsBody, MovementForce}
 
-class GameUnit(val id: Int, var position: Vector3) {
+class GameUnit(val id: Int, startPosition: Vector3) {
+  // Components
+  val physicsBody: PhysicsBody = new PhysicsBody(startPosition, mass = 1.0f)
+  val movementForce: MovementForce =
+    new MovementForce(new Vector3(), maxSpeed = 5f)
+
+  // Game State
   var selected: Boolean = false
   var hp: Float = 100f
   val maxHp: Float = 100f
-  val speed: Float = 5f
-  val radius: Float = 0.5f // For collision/selection
 
-  // Made public for rendering debug paths
-  val targetPosition: Vector3 = new Vector3(position)
-  private val moveDirection: Vector3 = new Vector3()
-  var isMoving: Boolean = false
+  // Delegates for convenience
+  def position: Vector3 = physicsBody.position
+  def radius: Float = physicsBody.radius
+
+  // For compatibility with renderer
+  def isMoving: Boolean = movementForce.active
+  def targetPosition: Vector3 = movementForce.targetPosition
 
   def update(delta: Float): Unit = {
-    if (isMoving) {
-      val distance = position.dst(targetPosition)
-      if (distance < 0.1f) {
-        position.set(targetPosition)
-        isMoving = false
-      } else {
-        moveDirection.set(targetPosition).sub(position).nor()
-        position.mulAdd(moveDirection, speed * delta)
-      }
-    }
+    // Apply specific behavior forces
+    movementForce.apply(physicsBody, delta)
   }
 
   def moveTo(target: Vector3): Unit = {
-    // Keep Y aligned with current position for now (flat movement)
-    // In a real game, you'd use pathfinding and ground clamping
-    targetPosition.set(target.x, position.y, target.z)
-    isMoving = true
+    movementForce.setTarget(target)
   }
 
   def setSelected(selected: Boolean): Unit = {
