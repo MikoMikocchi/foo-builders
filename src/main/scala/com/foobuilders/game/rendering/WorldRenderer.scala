@@ -7,16 +7,24 @@ import com.badlogic.gdx.graphics.g3d.{
   Environment,
   Model,
   ModelBatch,
-  ModelInstance
+  ModelInstance,
+  Material
 }
 import com.badlogic.gdx.graphics.g3d.attributes.ColorAttribute
 import com.badlogic.gdx.graphics.g3d.utils.ModelBuilder
+import com.badlogic.gdx.graphics.g3d.utils.shapebuilders.{
+  BoxShapeBuilder,
+  ConeShapeBuilder,
+  CylinderShapeBuilder,
+  SphereShapeBuilder
+}
 import com.badlogic.gdx.graphics.VertexAttributes.Usage
 import com.badlogic.gdx.graphics.g3d.environment.DirectionalLight
 import com.badlogic.gdx.math.Vector3
 import com.badlogic.gdx.Gdx
 import com.foobuilders.game.world.GameWorld
 import com.foobuilders.game.world.blocks.BlockType
+import com.foobuilders.game.entities.{UnitKind, UnitKinds, UnitShape, UnitStyle}
 import scala.collection.mutable
 import scala.jdk.CollectionConverters._
 
@@ -27,7 +35,7 @@ class WorldRenderer(world: GameWorld) {
   private val environment = new Environment()
   private val models = mutable.Map[BlockType, Model]()
   private val instances = mutable.ArrayBuffer[ModelInstance]()
-  private var unitModel: Model = _
+  private val unitModels = mutable.Map[UnitKind, Model]()
   private val tmpVec = new Vector3()
 
   initEnvironment()
@@ -44,20 +52,17 @@ class WorldRenderer(world: GameWorld) {
   }
 
   private def initModels(): Unit = {
-    val modelBuilder = new ModelBuilder()
+    val blockModelBuilder = new ModelBuilder()
 
     // Create a model for Stone
-    // In a real extensible system, we might iterate over all BlockType objects
-    // For now, we manually register known types or use the properties from the BlockType trait
-
     val types = Seq(BlockType.Stone)
 
     types.foreach { blockType =>
-      val model = modelBuilder.createBox(
+      val model = blockModelBuilder.createBox(
         1f,
         1f,
         1f,
-        new com.badlogic.gdx.graphics.g3d.Material(
+        new Material(
           ColorAttribute.createDiffuse(blockType.color)
         ),
         Usage.Position | Usage.Normal
@@ -65,40 +70,10 @@ class WorldRenderer(world: GameWorld) {
       models.put(blockType, model)
     }
 
-    // Unit Model (Cone Body + Sphere Head)
-    modelBuilder.begin()
-
-    // Body (Cone)
-    val bodyNode = modelBuilder.node()
-    bodyNode.id = "body"
-    bodyNode.translation.set(0, 0.6f, 0) // Center of cone (height 1.2)
-
-    val bodyPart = modelBuilder.part(
-      "body",
-      GL20.GL_TRIANGLES,
-      Usage.Position | Usage.Normal,
-      new com.badlogic.gdx.graphics.g3d.Material(
-        ColorAttribute.createDiffuse(Color.BLUE)
-      )
-    )
-    bodyPart.cone(0.8f, 1.2f, 0.8f, 16)
-
-    // Head (Sphere)
-    val headNode = modelBuilder.node()
-    headNode.id = "head"
-    headNode.translation.set(0, 1.2f + 0.35f, 0) // Top of cone + radius
-
-    val headPart = modelBuilder.part(
-      "head",
-      GL20.GL_TRIANGLES,
-      Usage.Position | Usage.Normal,
-      new com.badlogic.gdx.graphics.g3d.Material(
-        ColorAttribute.createDiffuse(Color.BLUE)
-      )
-    )
-    headPart.sphere(0.7f, 0.7f, 0.7f, 16, 16)
-
-    unitModel = modelBuilder.end()
+    unitModels.clear()
+    UnitKinds.all.foreach { kind =>
+      unitModels.put(kind, createUnitModel(kind))
+    }
   }
 
   // Rebuilds the visual representation (ModelInstances) from the World data
@@ -128,14 +103,16 @@ class WorldRenderer(world: GameWorld) {
     // Ideally we cache ModelInstances if they don't change often,
     // but for dynamic units we create/update them.
     for (unit <- world.units) {
-      val instance = new ModelInstance(unitModel)
-      // Unit pivot is now at feet (y=0 in model space)
-      instance.transform.setToTranslation(
-        unit.position.x,
-        unit.position.y,
-        unit.position.z
-      )
-      modelBatch.render(instance, environment)
+      unitModels.get(unit.kind).foreach { model =>
+        val instance = new ModelInstance(model)
+        // Unit pivot is now at feet (y=0 in model space)
+        instance.transform.setToTranslation(
+          unit.position.x,
+          unit.position.y,
+          unit.position.z
+        )
+        modelBatch.render(instance, environment)
+      }
     }
     modelBatch.end()
 
@@ -155,9 +132,11 @@ class WorldRenderer(world: GameWorld) {
     shapeRenderer.begin(ShapeType.Line)
 
     for (unit <- world.units if unit.selected) {
+      val style = unit.style
+
       // 1. Draw Path Line if moving
       if (unit.isMoving) {
-        shapeRenderer.setColor(Color.YELLOW)
+        shapeRenderer.setColor(style.secondary)
         shapeRenderer.line(unit.position, unit.targetPosition)
 
         // Optional: Draw target cross/point
@@ -168,7 +147,7 @@ class WorldRenderer(world: GameWorld) {
       }
 
       // 2. Draw Selection Circle
-      shapeRenderer.setColor(0f, 1f, 0f, 0.8f)
+      shapeRenderer.setColor(style.primary)
 
       // Draw circle at feet
       // ShapeRenderer doesn't have 3D circle, we simulate with poly or ellipse on ground
@@ -216,7 +195,7 @@ class WorldRenderer(world: GameWorld) {
       shapeRenderer.rect(x, y, barWidth, barHeight)
 
       // Health
-      shapeRenderer.setColor(Color.GREEN)
+      shapeRenderer.setColor(unit.style.secondary)
       val hpRatio = unit.hp / unit.maxHp
       shapeRenderer.rect(x, y, barWidth * hpRatio, barHeight)
     }
@@ -227,7 +206,96 @@ class WorldRenderer(world: GameWorld) {
   def dispose(): Unit = {
     modelBatch.dispose()
     shapeRenderer.dispose()
-    if (unitModel != null) unitModel.dispose()
+    unitModels.values.foreach(_.dispose())
     models.values.foreach(_.dispose())
+  }
+
+  private def createUnitModel(kind: UnitKind): Model = {
+    kind.style.shape match {
+      case UnitShape.ConeInfantry => createConeInfantry(kind.style)
+      case UnitShape.BoxWorker    => createBoxWorker(kind.style)
+    }
+  }
+
+  private def createConeInfantry(style: UnitStyle): Model = {
+    val modelBuilder = new ModelBuilder()
+    modelBuilder.begin()
+
+    val bodyNode = modelBuilder.node()
+    bodyNode.id = "body"
+    bodyNode.translation.set(0, 0.6f, 0)
+
+    val bodyPart = modelBuilder.part(
+      "body",
+      GL20.GL_TRIANGLES,
+      Usage.Position | Usage.Normal,
+      new Material(ColorAttribute.createDiffuse(style.primary))
+    )
+    ConeShapeBuilder.build(bodyPart, 0.8f, 1.2f, 0.8f, 16)
+
+    val headNode = modelBuilder.node()
+    headNode.id = "head"
+    headNode.translation.set(0, 1.55f, 0)
+
+    val headPart = modelBuilder.part(
+      "head",
+      GL20.GL_TRIANGLES,
+      Usage.Position | Usage.Normal,
+      new Material(ColorAttribute.createDiffuse(style.secondary))
+    )
+    SphereShapeBuilder.build(headPart, 0.7f, 0.7f, 0.7f, 16, 16)
+
+    modelBuilder.end()
+  }
+
+  private def createBoxWorker(style: UnitStyle): Model = {
+    val modelBuilder = new ModelBuilder()
+    modelBuilder.begin()
+
+    val bodyNode = modelBuilder.node()
+    bodyNode.id = "body"
+    bodyNode.translation.set(0f, 0.5f, 0f)
+    val bodyPart = modelBuilder.part(
+      "body",
+      GL20.GL_TRIANGLES,
+      Usage.Position | Usage.Normal,
+      new Material(ColorAttribute.createDiffuse(style.primary))
+    )
+    BoxShapeBuilder.build(bodyPart, 1.0f, 1.0f, 0.85f)
+
+    val packNode = modelBuilder.node()
+    packNode.id = "pack"
+    packNode.translation.set(0f, 0.8f, -0.45f)
+    val packPart = modelBuilder.part(
+      "pack",
+      GL20.GL_TRIANGLES,
+      Usage.Position | Usage.Normal,
+      new Material(ColorAttribute.createDiffuse(style.secondary))
+    )
+    BoxShapeBuilder.build(packPart, 0.4f, 0.6f, 0.25f)
+
+    val headNode = modelBuilder.node()
+    headNode.id = "head"
+    headNode.translation.set(0f, 1.25f, 0f)
+    val headPart = modelBuilder.part(
+      "head",
+      GL20.GL_TRIANGLES,
+      Usage.Position | Usage.Normal,
+      new Material(ColorAttribute.createDiffuse(style.secondary))
+    )
+    SphereShapeBuilder.build(headPart, 0.55f, 0.55f, 0.55f, 16, 16)
+
+    val helmetNode = modelBuilder.node()
+    helmetNode.id = "helmet"
+    helmetNode.translation.set(0f, 1.55f, 0f)
+    val helmetPart = modelBuilder.part(
+      "helmet",
+      GL20.GL_TRIANGLES,
+      Usage.Position | Usage.Normal,
+      new Material(ColorAttribute.createDiffuse(style.primary))
+    )
+    CylinderShapeBuilder.build(helmetPart, 0.9f, 0.25f, 0.9f, 16)
+
+    modelBuilder.end()
   }
 }

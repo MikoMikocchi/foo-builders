@@ -8,6 +8,7 @@ import com.foobuilders.game.FooBuildersGame
 import com.foobuilders.game.rendering.{GameCamera, Grid3D, WorldRenderer}
 import com.foobuilders.game.world.GameWorld
 import com.foobuilders.game.input.UnitInputHandler
+import com.foobuilders.game.entities.UnitKinds
 
 import com.badlogic.gdx.graphics.g2d.{BitmapFont, SpriteBatch}
 import com.badlogic.gdx.math.collision.Ray
@@ -40,9 +41,9 @@ class GameScreen(game: FooBuildersGame) extends ScreenAdapter {
     world.generatePlatform()
 
     // Spawn some units
-    world.spawnUnit(new Vector3(55, 1, 55))
-    world.spawnUnit(new Vector3(60, 1, 55))
-    world.spawnUnit(new Vector3(55, 1, 60))
+    world.spawnUnit(UnitKinds.Soldier, new Vector3(55, 1, 55))
+    world.spawnUnit(UnitKinds.Soldier, new Vector3(60, 1, 55))
+    world.spawnUnit(UnitKinds.Builder, new Vector3(55, 1, 60))
 
     // Grid centered at platform (50, 0, 50) covering slightly more than 50x50
     grid3D =

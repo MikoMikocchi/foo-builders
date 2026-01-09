@@ -1,7 +1,7 @@
 package com.foobuilders.game.world
 
 import com.foobuilders.game.world.blocks.BlockType
-import com.foobuilders.game.entities.GameUnit
+import com.foobuilders.game.entities.{GameUnit, UnitKind}
 import com.foobuilders.game.physics.{PhysicsEngine, WorldProvider}
 
 import com.badlogic.gdx.math.{Vector3, Intersector}
@@ -32,8 +32,8 @@ class GameWorld(val width: Int, val height: Int, val depth: Int)
     physicsEngine.update(delta)
   }
 
-  def spawnUnit(position: Vector3): GameUnit = {
-    val unit = new GameUnit(nextUnitId, new Vector3(position))
+  def spawnUnit(kind: UnitKind, position: Vector3): GameUnit = {
+    val unit = new GameUnit(nextUnitId, kind, new Vector3(position))
     nextUnitId += 1
     units += unit
     physicsEngine.addBody(unit.physicsBody)
