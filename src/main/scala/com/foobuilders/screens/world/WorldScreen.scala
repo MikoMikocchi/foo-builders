@@ -5,10 +5,17 @@ import com.badlogic.gdx.ScreenAdapter
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.graphics.GL20
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer
+import com.foobuilders.world.TileMap
+import com.foobuilders.world.tiles.MaterialRegistry
+import com.foobuilders.world.tiles.Materials
 
 final class WorldScreen extends ScreenAdapter {
   private val cellSize      = 1.0f
   private val gridHalfCells = 50
+
+  private val materialRegistry = MaterialRegistry.default
+  private val tileMap          = TileMap(gridHalfCells = gridHalfCells, defaultMaterial = Materials.Grass.id)
+  private val tileRenderer     = TileRenderer(cellSize = cellSize, tileMap = tileMap, materials = materialRegistry)
 
   private val cameraController = WorldCameraController(
     edgeScrollMarginPx = 24,
@@ -26,6 +33,9 @@ final class WorldScreen extends ScreenAdapter {
   override def show(): Unit = {
     cameraController.installInputProcessor()
     cameraController.setDefaultCameraPose()
+
+    // Default world: grass platform across the whole grid
+    tileMap.fill(Materials.Grass.id)
   }
 
   override def render(delta: Float): Unit = {
@@ -38,6 +48,7 @@ final class WorldScreen extends ScreenAdapter {
 
     shapes.setProjectionMatrix(cameraController.camera.combined)
 
+    tileRenderer.render(shapes)
     gridRenderer.render(shapes, color = new Color(0.18f, 0.20f, 0.26f, 1.0f))
     gridRenderer.renderAxes(
       shapes,
