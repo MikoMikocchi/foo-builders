@@ -5,6 +5,7 @@
         "**/.bloop/**": true,
         "**/.metals/**": true,
         "**/.gradle/**": true,
-        "**/build/**": true
+        "**/build/**": true,
+        "**/target": true
     }
 }
