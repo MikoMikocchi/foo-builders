@@ -8,17 +8,27 @@ import com.badlogic.gdx.graphics.OrthographicCamera
 import com.badlogic.gdx.graphics.g2d.BitmapFont
 import com.badlogic.gdx.graphics.g2d.SpriteBatch
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer
-import com.foobuilders.world.TileMap
-import com.foobuilders.world.tiles.MaterialRegistry
-import com.foobuilders.world.tiles.Materials
+import com.foobuilders.world.{VoxelMap, WorldGenerator, WorldSimulation, WorldState}
+import com.foobuilders.world.tiles.{MaterialRegistry, Materials}
 
 final class WorldScreen extends ScreenAdapter {
   private val cellSize      = 1.0f
-  private val gridHalfCells = 50
+  private val chunkSize     = 16
+  private val chunkRadius   = 4
+  private val levels        = 3
+
+  private val voxelMap = VoxelMap(
+    chunkSize = chunkSize,
+    chunkRadius = chunkRadius,
+    levels = levels,
+    defaultMaterial = Materials.Grass.id
+  )
+  private val gridHalfCells = voxelMap.halfCells
 
   private val materialRegistry = MaterialRegistry.default
-  private val tileMap          = TileMap(gridHalfCells = gridHalfCells, defaultMaterial = Materials.Grass.id)
-  private val tileRenderer     = TileRenderer(cellSize = cellSize, tileMap = tileMap, materials = materialRegistry)
+  private val tileRenderer     = TileRenderer(cellSize = cellSize, map = voxelMap, materials = materialRegistry)
+  private val worldState       = new WorldState(voxelMap)
+  private val simulation       = new WorldSimulation(worldState, ticksPerSecond = 6.0f)
 
   private val cameraController = WorldCameraController(
     edgeScrollMarginPx = 24,
@@ -36,17 +46,23 @@ final class WorldScreen extends ScreenAdapter {
   private val gridRenderer     = GridRenderer(cellSize = cellSize, gridHalfCells = gridHalfCells)
   private val hoverHighlighter = HoverCellHighlighter(cellSize = cellSize, gridHalfCells = gridHalfCells)
 
+  private var activeLevel: Int = 0
+  private var lastSimTicks     = 0
+
   override def show(): Unit = {
     cameraController.installInputProcessor()
     cameraController.setDefaultCameraPose()
 
-    // Default world: grass platform across the whole grid
-    tileMap.fill(Materials.Grass.id)
+    // Default world: flat ground across all chunks
+    WorldGenerator.flatGround(voxelMap, Materials.Grass.id)
   }
 
   override def render(delta: Float): Unit = {
     Gdx.gl.glClearColor(0.08f, 0.09f, 0.12f, 1.0f)
     Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT)
+
+    updateLevelHotkeys()
+    lastSimTicks = simulation.update(delta)
 
     cameraController.update(delta)
     cameraController.lookAtTarget()
@@ -54,7 +70,7 @@ final class WorldScreen extends ScreenAdapter {
 
     shapes.setProjectionMatrix(cameraController.camera.combined)
 
-    tileRenderer.render(shapes)
+    tileRenderer.render(shapes, level = activeLevel)
     gridRenderer.render(shapes, color = new Color(0.18f, 0.20f, 0.26f, 1.0f))
     gridRenderer.renderAxes(
       shapes,
@@ -68,18 +84,25 @@ final class WorldScreen extends ScreenAdapter {
     )
 
     // Debug overlay: hovered tile info
-    val infoText = hoverHighlighter.hoveredCell(cameraController.camera) match {
-      case None => "Tile: (out of bounds)"
-      case Some((cellX, cellY)) =>
-        val matId = tileMap.materialAt(cellX, cellY)
-        val mat   = materialRegistry.resolve(matId)
-        s"Tile: ($cellX,$cellY) | Material: ${mat.displayName} (${matId.value})"
-    }
+    val infoText =
+      hoverHighlighter.hoveredCell(cameraController.camera) match {
+        case None => s"Tile: (out of bounds) | Level: $activeLevel"
+        case Some((cellX, cellY)) =>
+          val matId = voxelMap.materialAt(cellX, cellY, activeLevel)
+          val mat   = materialRegistry.resolve(matId)
+          s"Tile: ($cellX,$cellY,$activeLevel) | Material: ${mat.displayName} (${matId.value})"
+      }
 
     uiBatch.setProjectionMatrix(uiCamera.combined)
     uiBatch.begin()
     uiFont.setColor(1.0f, 1.0f, 1.0f, 1.0f)
     uiFont.draw(uiBatch, infoText, 12.0f, uiCamera.viewportHeight - 12.0f)
+    uiFont.draw(
+      uiBatch,
+      s"Sim: ${simulation.totalTicks} ticks (+$lastSimTicks) | Active level: $activeLevel",
+      12.0f,
+      uiCamera.viewportHeight - 32.0f
+    )
     uiBatch.end()
   }
 
@@ -98,5 +121,16 @@ final class WorldScreen extends ScreenAdapter {
     shapes.dispose()
     uiBatch.dispose()
     uiFont.dispose()
+  }
+
+  private def updateLevelHotkeys(): Unit = {
+    import com.badlogic.gdx.Input
+
+    if (Gdx.input.isKeyJustPressed(Input.Keys.PAGE_UP) || Gdx.input.isKeyJustPressed(Input.Keys.E)) {
+      activeLevel = (activeLevel + 1).min(levels - 1)
+    }
+    if (Gdx.input.isKeyJustPressed(Input.Keys.PAGE_DOWN) || Gdx.input.isKeyJustPressed(Input.Keys.Q)) {
+      activeLevel = (activeLevel - 1).max(0)
+    }
   }
 }
