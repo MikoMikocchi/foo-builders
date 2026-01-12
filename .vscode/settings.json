@@ -1,0 +1,10 @@
+{
+    "metals.scalafmtConfigPath": ".scalafmt.conf",
+    "metals.enableSemanticHighlighting": true,
+    "files.watcherExclude": {
+        "**/.bloop/**": true,
+        "**/.metals/**": true,
+        "**/.gradle/**": true,
+        "**/build/**": true
+    }
+}
