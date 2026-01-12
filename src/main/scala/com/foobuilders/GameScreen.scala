@@ -18,16 +18,16 @@ final class GameScreen extends ScreenAdapter {
   private val edgeScrollMarginPx = 24
   private val edgeScrollSpeed    = 18.0f // world units / second
 
-  private val zoomStep          = 0.10f
-  private val minZoom = 0.35f
-  private val maxZoom = 3.50f
+  private val zoomStep = 0.10f
+  private val minZoom  = 0.35f
+  private val maxZoom  = 3.50f
 
   private val camera = new OrthographicCamera()
-  private val shapes      = new ShapeRenderer()
+  private val shapes = new ShapeRenderer()
 
-  private val target       = new Vector3(0.0f, 0.0f, 0.0f)
-  private val tmpMove      = new Vector3()
-  private val tmpWorld     = new Vector3()
+  private val target   = new Vector3(0.0f, 0.0f, 0.0f)
+  private val tmpMove  = new Vector3()
+  private val tmpWorld = new Vector3()
 
   private val input = new InputAdapter {
     override def scrolled(amountX: Float, amountY: Float): Boolean = {

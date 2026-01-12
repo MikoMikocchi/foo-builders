@@ -15,13 +15,13 @@ final class WorldCameraController(
 ) {
   val camera: OrthographicCamera = new OrthographicCamera()
 
-  private val target       = new Vector3(0.0f, 0.0f, 0.0f)
-  private val tmpMove      = new Vector3()
+  private val target  = new Vector3(0.0f, 0.0f, 0.0f)
+  private val tmpMove = new Vector3()
 
   private val inputProcessor = new InputAdapter {
     override def scrolled(amountX: Float, amountY: Float): Boolean = {
       // amountY: +1 down, -1 up (usually)
-      val factor  = 1.0f + (amountY * zoomStep)
+      val factor   = 1.0f + (amountY * zoomStep)
       val nextZoom = (camera.zoom * factor).max(minZoom).min(maxZoom)
       camera.zoom = nextZoom
 
