@@ -8,19 +8,19 @@ final class GridRenderer(cellSize: Float, gridHalfCells: Int) {
   private val max = gridHalfCells * cellSize
 
   def render(shapes: ShapeRenderer, color: Color): Unit = {
-    // Grid on XZ plane (y=0)
+    // 2D grid on XY plane
     shapes.begin(ShapeRenderer.ShapeType.Line)
     shapes.setColor(color)
 
     var i = -gridHalfCells
     while (i <= gridHalfCells) {
       val x = i * cellSize
-      val z = i * cellSize
+      val y = i * cellSize
 
-      // Lines parallel to Z
-      shapes.line(x, 0.0f, min, x, 0.0f, max)
-      // Lines parallel to X
-      shapes.line(min, 0.0f, z, max, 0.0f, z)
+      // Vertical
+      shapes.line(x, min, x, max)
+      // Horizontal
+      shapes.line(min, y, max, y)
 
       i += 1
     }
@@ -33,11 +33,11 @@ final class GridRenderer(cellSize: Float, gridHalfCells: Int) {
 
     // X axis
     shapes.setColor(xAxisColor)
-    shapes.line(min, 0.0f, 0.0f, max, 0.0f, 0.0f)
+    shapes.line(min, 0.0f, max, 0.0f)
 
-    // Z axis
+    // Y axis
     shapes.setColor(zAxisColor)
-    shapes.line(0.0f, 0.0f, min, 0.0f, 0.0f, max)
+    shapes.line(0.0f, min, 0.0f, max)
 
     shapes.end()
   }

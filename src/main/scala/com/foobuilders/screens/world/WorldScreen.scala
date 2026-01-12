@@ -14,8 +14,9 @@ final class WorldScreen extends ScreenAdapter {
     edgeScrollMarginPx = 24,
     edgeScrollSpeed = 18.0f,
     zoomStep = 0.10f,
-    minCameraDistance = 6.0f,
-    maxCameraDistance = 120.0f
+    minZoom = 0.35f,
+    maxZoom = 3.50f,
+    pixelsPerUnit = 32.0f
   )
 
   private val shapes           = new ShapeRenderer()
@@ -28,10 +29,8 @@ final class WorldScreen extends ScreenAdapter {
   }
 
   override def render(delta: Float): Unit = {
-    Gdx.gl.glEnable(GL20.GL_DEPTH_TEST)
-    Gdx.gl.glDepthMask(true)
     Gdx.gl.glClearColor(0.08f, 0.09f, 0.12f, 1.0f)
-    Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT | GL20.GL_DEPTH_BUFFER_BIT)
+    Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT)
 
     cameraController.update(delta)
     cameraController.lookAtTarget()

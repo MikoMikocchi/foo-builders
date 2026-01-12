@@ -2,36 +2,32 @@ package com.foobuilders.screens.world
 
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.graphics.Color
-import com.badlogic.gdx.graphics.PerspectiveCamera
+import com.badlogic.gdx.graphics.OrthographicCamera
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer
-import com.badlogic.gdx.math.Intersector
-import com.badlogic.gdx.math.Plane
 import com.badlogic.gdx.math.Vector3
 
 final class HoverCellHighlighter(cellSize: Float, gridHalfCells: Int) {
-  private val groundPlane = new Plane(new Vector3(0.0f, 1.0f, 0.0f), 0.0f)
-  private val hit         = new Vector3()
+  private val tmpWorld = new Vector3()
 
-  def render(camera: PerspectiveCamera, shapes: ShapeRenderer, color: Color): Unit = {
-    // Intersect mouse ray with ground plane (y=0)
-    val ray = camera.getPickRay(Gdx.input.getX.toFloat, Gdx.input.getY.toFloat)
-    if (!Intersector.intersectRayPlane(ray, groundPlane, hit)) return
+  def render(camera: OrthographicCamera, shapes: ShapeRenderer, color: Color): Unit = {
+    // Convert mouse screen coords to world coords
+    tmpWorld.set(Gdx.input.getX.toFloat, Gdx.input.getY.toFloat, 0.0f)
+    camera.unproject(tmpWorld)
 
-    val cellX = Math.floor(hit.x / cellSize.toDouble).toInt
-    val cellZ = Math.floor(hit.z / cellSize.toDouble).toInt
+    val cellX = Math.floor(tmpWorld.x / cellSize.toDouble).toInt
+    val cellY = Math.floor(tmpWorld.y / cellSize.toDouble).toInt
 
-    if (cellX < -gridHalfCells || cellX >= gridHalfCells || cellZ < -gridHalfCells || cellZ >= gridHalfCells) return
+    if (cellX < -gridHalfCells || cellX >= gridHalfCells || cellY < -gridHalfCells || cellY >= gridHalfCells) return
 
     val x0 = cellX * cellSize
-    val z0 = cellZ * cellSize
-    val y0 = 0.0f
+    val y0 = cellY * cellSize
 
     shapes.begin(ShapeRenderer.ShapeType.Line)
     shapes.setColor(color)
-    shapes.line(x0, y0, z0, x0 + cellSize, y0, z0)
-    shapes.line(x0 + cellSize, y0, z0, x0 + cellSize, y0, z0 + cellSize)
-    shapes.line(x0 + cellSize, y0, z0 + cellSize, x0, y0, z0 + cellSize)
-    shapes.line(x0, y0, z0 + cellSize, x0, y0, z0)
+    shapes.line(x0, y0, x0 + cellSize, y0)
+    shapes.line(x0 + cellSize, y0, x0 + cellSize, y0 + cellSize)
+    shapes.line(x0 + cellSize, y0 + cellSize, x0, y0 + cellSize)
+    shapes.line(x0, y0 + cellSize, x0, y0)
     shapes.end()
   }
 }
