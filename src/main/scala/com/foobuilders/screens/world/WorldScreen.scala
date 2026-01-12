@@ -4,6 +4,9 @@ import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.ScreenAdapter
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.graphics.GL20
+import com.badlogic.gdx.graphics.OrthographicCamera
+import com.badlogic.gdx.graphics.g2d.BitmapFont
+import com.badlogic.gdx.graphics.g2d.SpriteBatch
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer
 import com.foobuilders.world.TileMap
 import com.foobuilders.world.tiles.MaterialRegistry
@@ -27,6 +30,9 @@ final class WorldScreen extends ScreenAdapter {
   )
 
   private val shapes           = new ShapeRenderer()
+  private val uiCamera         = new OrthographicCamera()
+  private val uiBatch          = new SpriteBatch()
+  private val uiFont           = new BitmapFont()
   private val gridRenderer     = GridRenderer(cellSize = cellSize, gridHalfCells = gridHalfCells)
   private val hoverHighlighter = HoverCellHighlighter(cellSize = cellSize, gridHalfCells = gridHalfCells)
 
@@ -60,10 +66,28 @@ final class WorldScreen extends ScreenAdapter {
       shapes = shapes,
       color = new Color(0.95f, 0.85f, 0.20f, 1.0f)
     )
+
+    // Debug overlay: hovered tile info
+    val infoText = hoverHighlighter.hoveredCell(cameraController.camera) match {
+      case None => "Tile: (out of bounds)"
+      case Some((cellX, cellY)) =>
+        val matId = tileMap.materialAt(cellX, cellY)
+        val mat   = materialRegistry.resolve(matId)
+        s"Tile: ($cellX,$cellY) | Material: ${mat.displayName} (${matId.value})"
+    }
+
+    uiBatch.setProjectionMatrix(uiCamera.combined)
+    uiBatch.begin()
+    uiFont.setColor(1.0f, 1.0f, 1.0f, 1.0f)
+    uiFont.draw(uiBatch, infoText, 12.0f, uiCamera.viewportHeight - 12.0f)
+    uiBatch.end()
   }
 
   override def resize(width: Int, height: Int): Unit = {
     cameraController.resize(width, height)
+
+    uiCamera.setToOrtho(false, width.toFloat, height.toFloat)
+    uiCamera.update()
   }
 
   override def hide(): Unit = {
@@ -72,5 +96,7 @@ final class WorldScreen extends ScreenAdapter {
 
   override def dispose(): Unit = {
     shapes.dispose()
+    uiBatch.dispose()
+    uiFont.dispose()
   }
 }

@@ -9,7 +9,7 @@ import com.badlogic.gdx.math.Vector3
 final class HoverCellHighlighter(cellSize: Float, gridHalfCells: Int) {
   private val tmpWorld = new Vector3()
 
-  def render(camera: OrthographicCamera, shapes: ShapeRenderer, color: Color): Unit = {
+  def hoveredCell(camera: OrthographicCamera): Option[(Int, Int)] = {
     // Convert mouse screen coords to world coords
     tmpWorld.set(Gdx.input.getX.toFloat, Gdx.input.getY.toFloat, 0.0f)
     camera.unproject(tmpWorld)
@@ -17,7 +17,15 @@ final class HoverCellHighlighter(cellSize: Float, gridHalfCells: Int) {
     val cellX = Math.floor(tmpWorld.x / cellSize.toDouble).toInt
     val cellY = Math.floor(tmpWorld.y / cellSize.toDouble).toInt
 
-    if (cellX < -gridHalfCells || cellX >= gridHalfCells || cellY < -gridHalfCells || cellY >= gridHalfCells) return
+    if (cellX < -gridHalfCells || cellX >= gridHalfCells || cellY < -gridHalfCells || cellY >= gridHalfCells) None
+    else Some((cellX, cellY))
+  }
+
+  def render(camera: OrthographicCamera, shapes: ShapeRenderer, color: Color): Unit = {
+    val (cellX, cellY) = hoveredCell(camera) match {
+      case None             => return
+      case Some((x0, y0))   => (x0, y0)
+    }
 
     val x0 = cellX * cellSize
     val y0 = cellY * cellSize
