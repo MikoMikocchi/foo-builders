@@ -10,7 +10,7 @@ import com.badlogic.gdx.math.Vector3
 
 final class HoverCellHighlighter(cellSize: Float, gridHalfCells: Int) {
   private val groundPlane = new Plane(new Vector3(0.0f, 1.0f, 0.0f), 0.0f)
-  private val hit = new Vector3()
+  private val hit         = new Vector3()
 
   def render(camera: PerspectiveCamera, shapes: ShapeRenderer, color: Color): Unit = {
     // Intersect mouse ray with ground plane (y=0)

@@ -7,7 +7,7 @@ import com.badlogic.gdx.graphics.GL20
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer
 
 final class WorldScreen extends ScreenAdapter {
-  private val cellSize = 1.0f
+  private val cellSize      = 1.0f
   private val gridHalfCells = 50
 
   private val cameraController = WorldCameraController(
@@ -18,8 +18,8 @@ final class WorldScreen extends ScreenAdapter {
     maxCameraDistance = 120.0f
   )
 
-  private val shapes = new ShapeRenderer()
-  private val gridRenderer = GridRenderer(cellSize = cellSize, gridHalfCells = gridHalfCells)
+  private val shapes           = new ShapeRenderer()
+  private val gridRenderer     = GridRenderer(cellSize = cellSize, gridHalfCells = gridHalfCells)
   private val hoverHighlighter = HoverCellHighlighter(cellSize = cellSize, gridHalfCells = gridHalfCells)
 
   override def show(): Unit = {

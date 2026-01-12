@@ -6,11 +6,11 @@ import com.badlogic.gdx.graphics.PerspectiveCamera
 import com.badlogic.gdx.math.Vector3
 
 final class WorldCameraController(
-  edgeScrollMarginPx: Int,
-  edgeScrollSpeed: Float,
-  zoomStep: Float,
-  minCameraDistance: Float,
-  maxCameraDistance: Float
+    edgeScrollMarginPx: Int,
+    edgeScrollSpeed: Float,
+    zoomStep: Float,
+    minCameraDistance: Float,
+    maxCameraDistance: Float
 ) {
   val camera: PerspectiveCamera = new PerspectiveCamera(
     67.0f,
@@ -18,10 +18,10 @@ final class WorldCameraController(
     Gdx.graphics.getHeight.toFloat
   )
 
-  private val target = new Vector3(0.0f, 0.0f, 0.0f)
-  private val tmpForward = new Vector3()
-  private val tmpRight = new Vector3()
-  private val tmpMove = new Vector3()
+  private val target       = new Vector3(0.0f, 0.0f, 0.0f)
+  private val tmpForward   = new Vector3()
+  private val tmpRight     = new Vector3()
+  private val tmpMove      = new Vector3()
   private val tmpCamOffset = new Vector3()
 
   private val inputProcessor = new InputAdapter {
@@ -77,8 +77,8 @@ final class WorldCameraController(
   private def updateEdgeScroll(delta: Float): Unit = {
     val screenW = Gdx.graphics.getWidth
     val screenH = Gdx.graphics.getHeight
-    val mouseX = Gdx.input.getX
-    val mouseY = Gdx.input.getY
+    val mouseX  = Gdx.input.getX
+    val mouseY  = Gdx.input.getY
 
     var xDir = 0.0f
     if (mouseX <= edgeScrollMarginPx) xDir = -1.0f
@@ -109,11 +109,11 @@ final class WorldCameraController(
 
 object WorldCameraController {
   def apply(
-    edgeScrollMarginPx: Int,
-    edgeScrollSpeed: Float,
-    zoomStep: Float,
-    minCameraDistance: Float,
-    maxCameraDistance: Float
+      edgeScrollMarginPx: Int,
+      edgeScrollSpeed: Float,
+      zoomStep: Float,
+      minCameraDistance: Float,
+      maxCameraDistance: Float
   ): WorldCameraController =
     new WorldCameraController(
       edgeScrollMarginPx = edgeScrollMarginPx,
