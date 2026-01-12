@@ -1,6 +1,7 @@
 package com.foobuilders.world
 
 import com.foobuilders.world.tiles.Materials
+import com.foobuilders.world.WorldGenerator
 import org.junit.jupiter.api.Assertions.{assertEquals, assertTrue}
 import org.junit.jupiter.api.Test
 
@@ -34,7 +35,7 @@ final class VoxelMapTest {
 
   @Test
   def storesColumnMetadata(): Unit = {
-    val map = VoxelMap(chunkSize = 4, chunkRadius = 1, levels = 1, defaultMaterial = defaultMaterial)
+    val map  = VoxelMap(chunkSize = 4, chunkRadius = 1, levels = 1, defaultMaterial = defaultMaterial)
     val meta = ColumnMetadata(height = 2.5f, moisture = 0.4f, temperature = 14.0f)
 
     map.updateColumnMetadata(0, 0, meta)
@@ -43,5 +44,22 @@ final class VoxelMapTest {
     assertEquals(meta.height, read.height)
     assertEquals(meta.moisture, read.moisture)
     assertEquals(meta.temperature, read.temperature)
+  }
+
+  @Test
+  def generatorBuildsGroundAndAir(): Unit = {
+    val levels     = 6
+    val surfaceLvl = 3
+    val map        = VoxelMap(chunkSize = 4, chunkRadius = 1, levels = levels, defaultMaterial = Materials.Air.id)
+
+    WorldGenerator.flatGround(map, Materials.Grass.id, surfaceLevel = surfaceLvl)
+
+    // Below surface must be dirt
+    assertEquals(Materials.Dirt.id, map.materialAt(0, 0, 0))
+    assertEquals(Materials.Dirt.id, map.materialAt(0, 0, surfaceLvl - 1))
+    // Surface is grass
+    assertEquals(Materials.Grass.id, map.materialAt(0, 0, surfaceLvl))
+    // Above surface is air
+    assertEquals(Materials.Air.id, map.materialAt(0, 0, surfaceLvl + 1))
   }
 }

@@ -12,16 +12,20 @@ import com.foobuilders.world.{VoxelMap, WorldGenerator, WorldSimulation, WorldSt
 import com.foobuilders.world.tiles.{MaterialRegistry, Materials}
 
 final class WorldScreen extends ScreenAdapter {
-  private val cellSize      = 1.0f
-  private val chunkSize     = 16
-  private val chunkRadius   = 4
-  private val levels        = 3
+  private val cellSize     = 1.0f
+  private val chunkSize    = 16
+  private val chunkRadius  = 4
+  private val levels       = 48
+  private val surfaceLevel = 24
+
+  /** Current fog config - can be swapped for day/night cycle */
+  private var fogConfig: FogConfig = FogConfig.day
 
   private val voxelMap = VoxelMap(
     chunkSize = chunkSize,
     chunkRadius = chunkRadius,
     levels = levels,
-    defaultMaterial = Materials.Grass.id
+    defaultMaterial = Materials.Air.id
   )
   private val gridHalfCells = voxelMap.halfCells
 
@@ -53,12 +57,17 @@ final class WorldScreen extends ScreenAdapter {
     cameraController.installInputProcessor()
     cameraController.setDefaultCameraPose()
 
-    // Default world: flat ground across all chunks
-    WorldGenerator.flatGround(voxelMap, Materials.Grass.id)
+    // Default world: flat ground across all chunks with air above
+    WorldGenerator.flatGround(voxelMap, Materials.Grass.id, surfaceLevel = surfaceLevel)
+    activeLevel = surfaceLevel
   }
 
   override def render(delta: Float): Unit = {
-    Gdx.gl.glClearColor(0.08f, 0.09f, 0.12f, 1.0f)
+    // Clear to appropriate fog color based on current view level
+    val clearColor =
+      if (activeLevel > surfaceLevel) fogConfig.skyFogColor
+      else fogConfig.depthFogColor
+    Gdx.gl.glClearColor(clearColor.r, clearColor.g, clearColor.b, 1.0f)
     Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT)
 
     updateLevelHotkeys()
@@ -70,7 +79,7 @@ final class WorldScreen extends ScreenAdapter {
 
     shapes.setProjectionMatrix(cameraController.camera.combined)
 
-    tileRenderer.render(shapes, level = activeLevel)
+    tileRenderer.render(shapes, activeLevel = activeLevel, surfaceLevel = surfaceLevel, fogConfig = fogConfig)
     gridRenderer.render(shapes, color = new Color(0.18f, 0.20f, 0.26f, 1.0f))
     gridRenderer.renderAxes(
       shapes,
@@ -99,7 +108,7 @@ final class WorldScreen extends ScreenAdapter {
     uiFont.draw(uiBatch, infoText, 12.0f, uiCamera.viewportHeight - 12.0f)
     uiFont.draw(
       uiBatch,
-      s"Sim: ${simulation.totalTicks} ticks (+$lastSimTicks) | Active level: $activeLevel",
+      s"Sim: ${simulation.totalTicks} ticks (+$lastSimTicks) | Active level: $activeLevel / ${levels - 1} | Surface: $surfaceLevel",
       12.0f,
       uiCamera.viewportHeight - 32.0f
     )

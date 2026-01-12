@@ -7,7 +7,8 @@ final case class MaterialDef(
     displayName: String,
     color: Color,
     isWalkable: Boolean = true,
-    isBuildable: Boolean = true
+    isBuildable: Boolean = true,
+    blocksSight: Boolean = false
 )
 
 object MaterialDef {
@@ -17,6 +18,7 @@ object MaterialDef {
       displayName = s"Unknown(${id.value})",
       color = new Color(1.0f, 0.0f, 1.0f, 1.0f),
       isWalkable = false,
-      isBuildable = false
+      isBuildable = false,
+      blocksSight = true
     )
 }

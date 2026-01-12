@@ -21,6 +21,18 @@ private final class ChunkData(chunkSize: Int, levels: Int, defaultMaterial: Mate
   def materialAt(localX: Int, localY: Int, level: Int): MaterialId =
     data(index(localX, localY, level))
 
+  def fillLevel(level: Int, material: MaterialId): Unit = {
+    var y = 0
+    while (y < chunkSize) {
+      var x = 0
+      while (x < chunkSize) {
+        data(index(x, y, level)) = material
+        x += 1
+      }
+      y += 1
+    }
+  }
+
   private inline def index(localX: Int, localY: Int, level: Int): Int =
     (level * chunkSize + localY) * chunkSize + localX
 }
@@ -57,6 +69,20 @@ final class VoxelMap(
     if (!inBounds(cellX, cellY, level)) return
     val (chunk, localX, localY) = resolveChunk(cellX, cellY)
     chunk.set(localX, localY, level, material)
+  }
+
+  def fillLevel(level: Int, material: MaterialId): Unit = {
+    if (level < 0 || level >= levels) return
+
+    var cy = 0
+    while (cy < chunkDiameter) {
+      var cx = 0
+      while (cx < chunkDiameter) {
+        chunks(cy * chunkDiameter + cx).fillLevel(level, material)
+        cx += 1
+      }
+      cy += 1
+    }
   }
 
   def materialAt(cellX: Int, cellY: Int, level: Int): MaterialId = {
