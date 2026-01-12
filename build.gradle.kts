@@ -44,7 +44,7 @@ scala {
 }
 
 application {
-    mainClass.set("com.foobuilders.GameMain")
+    mainClass.set("com.foobuilders.app.GameMain")
 }
 
 dependencies {
