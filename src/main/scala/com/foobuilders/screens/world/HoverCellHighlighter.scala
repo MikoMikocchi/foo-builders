@@ -23,8 +23,8 @@ final class HoverCellHighlighter(cellSize: Float, gridHalfCells: Int) {
 
   def render(camera: OrthographicCamera, shapes: ShapeRenderer, color: Color): Unit = {
     val (cellX, cellY) = hoveredCell(camera) match {
-      case None             => return
-      case Some((x0, y0))   => (x0, y0)
+      case None           => return
+      case Some((x0, y0)) => (x0, y0)
     }
 
     val x0 = cellX * cellSize
