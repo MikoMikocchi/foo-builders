@@ -8,7 +8,7 @@ object Materials {
       id = MaterialId("air"),
       displayName = "Air",
       color = new Color(1.0f, 1.0f, 1.0f, 0.0f),
-      isWalkable = true,
+      isWalkable = false,
       isBuildable = false,
       blocksSight = false
     )

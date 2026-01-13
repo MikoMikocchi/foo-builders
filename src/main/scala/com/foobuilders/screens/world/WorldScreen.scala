@@ -109,7 +109,16 @@ final class WorldScreen extends ScreenAdapter {
 
     tileRenderer.render(shapes, activeLevel = activeLevel, surfaceLevel = surfaceLevel, fogConfig = fogConfig)
     val entitySnapshots = worldState.entities.snapshots
-    entityRenderer.render(shapes, entitySnapshots, selectedEntity)
+    val nowSeconds      = worldState.totalElapsedSeconds
+    entityRenderer.render(
+      shapes,
+      entitySnapshots,
+      selectedEntity,
+      nowSeconds,
+      activeLevel = activeLevel,
+      surfaceLevel = surfaceLevel,
+      fogConfig = fogConfig
+    )
     gridRenderer.render(shapes, color = new Color(0.18f, 0.20f, 0.26f, 1.0f))
     gridRenderer.renderAxes(
       shapes,
