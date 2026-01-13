@@ -18,9 +18,9 @@ final class EntitySystem(
     materials: MaterialRegistry,
     seed: Long = System.currentTimeMillis()
 ) {
-  private val entities = mutable.LinkedHashMap.empty[EntityId, EntityInstance]
-  private val rng      = new Random(seed)
-  private val selected = mutable.Set.empty[EntityId]
+  private val entities         = mutable.LinkedHashMap.empty[EntityId, EntityInstance]
+  private val rng              = new Random(seed)
+  private val selected         = mutable.Set.empty[EntityId]
   private val lastDeselectedAt = mutable.Map.empty[EntityId, Double]
 
   private var nextId: Long = 1L

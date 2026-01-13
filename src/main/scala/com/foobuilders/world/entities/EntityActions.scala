@@ -17,7 +17,7 @@ trait CommandableBrain {
 final class ActionQueueBrain(fallback: EntityBrain = ActionQueueBrain.idleFallback)
     extends EntityBrain
     with CommandableBrain {
-  private val queue = mutable.Queue.empty[EntityAction]
+  private val queue                  = mutable.Queue.empty[EntityAction]
   private var randomEnabled: Boolean = true
 
   override def decide(self: EntityPerception, context: EntityContext): EntityIntent = {
@@ -73,7 +73,7 @@ final case class MoveToAction(target: GridPosition) extends EntityAction {
     val nextPos = self.position.translate(stepX, stepY, stepZ)
 
     if (context.canOccupyFor(self.id, nextPos)) {
-      val intent = EntityIntent(MoveIntent.Step(stepX, stepY, stepZ))
+      val intent  = EntityIntent(MoveIntent.Step(stepX, stepY, stepZ))
       val reached = nextPos == target
       ActionResult(intent, completed = reached)
     } else {

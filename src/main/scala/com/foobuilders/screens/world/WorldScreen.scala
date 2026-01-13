@@ -66,7 +66,7 @@ final class WorldScreen extends ScreenAdapter {
         case None => false
         case Some((cellX, cellY)) =>
           button match {
-            case Input.Buttons.LEFT  =>
+            case Input.Buttons.LEFT =>
               selectEntityAt(cellX, cellY)
               true
             case Input.Buttons.RIGHT =>
