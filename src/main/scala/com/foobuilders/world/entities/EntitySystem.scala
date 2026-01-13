@@ -20,6 +20,8 @@ final class EntitySystem(
 ) {
   private val entities = mutable.LinkedHashMap.empty[EntityId, EntityInstance]
   private val rng      = new Random(seed)
+  private val selected = mutable.Set.empty[EntityId]
+  private val lastDeselectedAt = mutable.Map.empty[EntityId, Double]
 
   private var nextId: Long = 1L
 
@@ -36,7 +38,30 @@ final class EntitySystem(
   def snapshots: Iterable[EntitySnapshot] =
     entities.valuesIterator.map(e => EntitySnapshot(e.id, e.definition, e.position)).toList
 
-  def update(tickSeconds: Float): Unit = {
+  def setSelected(entityId: EntityId, selectedFlag: Boolean, nowSeconds: Double): Unit = {
+    if (!entities.contains(entityId)) return
+
+    if (selectedFlag) {
+      selected += entityId
+      lastDeselectedAt.remove(entityId)
+      setRandomEnabled(entityId, enabled = false)
+    } else {
+      selected -= entityId
+      lastDeselectedAt.update(entityId, nowSeconds)
+      setRandomEnabled(entityId, enabled = false)
+    }
+  }
+
+  def command(entityId: EntityId, action: EntityAction, append: Boolean): Boolean =
+    commandableBrain(entityId) match {
+      case Some(brain) =>
+        if (append) brain.enqueueAction(action)
+        else brain.setAction(action)
+        true
+      case None => false
+    }
+
+  def update(tickSeconds: Float, nowSeconds: Double): Unit = {
     val occupied = mutable.Map.from(occupiedPositionsById)
 
     val context = EntityContext(
@@ -47,6 +72,16 @@ final class EntitySystem(
     )
 
     entities.valuesIterator.foreach { entity =>
+      val shouldEnableRandom =
+        if (selected.contains(entity.id)) false
+        else
+          lastDeselectedAt.get(entity.id) match {
+            case Some(stamp) => (nowSeconds - stamp) >= 20.0
+            case None        => true
+          }
+
+      setRandomEnabled(entity.id, enabled = shouldEnableRandom)
+
       val intent = entity.brain.decide(
         EntityPerception(entity.id, entity.position, entity.definition),
         context
@@ -82,6 +117,23 @@ final class EntitySystem(
 
   private def occupiedPositionsById: Map[EntityId, GridPosition] =
     entities.view.mapValues(_.position).toMap
+
+  private def commandableBrain(entityId: EntityId): Option[CommandableBrain] =
+    entities.get(entityId).flatMap { instance =>
+      instance.brain match {
+        case brain: CommandableBrain => Some(brain)
+        case _                       => None
+      }
+    }
+
+  private def setRandomEnabled(entityId: EntityId, enabled: Boolean): Unit = {
+    entities.get(entityId).foreach { instance =>
+      instance.brain match {
+        case brain: ActionQueueBrain => brain.setRandomEnabled(enabled)
+        case _                       => // ignore
+      }
+    }
+  }
 }
 
 object EntitySystem {

@@ -12,6 +12,9 @@ object Human {
 
   def randomWalker(stepCooldownTicks: Int = 3): EntityBrain =
     new RandomWalkBrain(stepCooldownTicks = stepCooldownTicks)
+
+  def commandable(stepCooldownTicks: Int = 3): ActionQueueBrain =
+    new ActionQueueBrain(fallback = randomWalker(stepCooldownTicks))
 }
 
 final class RandomWalkBrain(stepCooldownTicks: Int) extends EntityBrain {

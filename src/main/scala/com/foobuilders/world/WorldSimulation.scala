@@ -6,7 +6,7 @@ final class WorldSimulation(world: WorldState, ticksPerSecond: Float) {
   def update(deltaSeconds: Float): Int =
     clock.update(deltaSeconds) { tickDt =>
       world.step(tickDt)
-      world.entities.update(tickDt)
+      world.entities.update(tickDt, world.totalElapsedSeconds)
     }
 
   def totalTicks: Long = clock.ticksSoFar

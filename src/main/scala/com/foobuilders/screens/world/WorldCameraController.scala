@@ -18,7 +18,7 @@ final class WorldCameraController(
   private val target  = new Vector3(0.0f, 0.0f, 0.0f)
   private val tmpMove = new Vector3()
 
-  private val inputProcessor = new InputAdapter {
+  private val cameraInput = new InputAdapter {
     override def scrolled(amountX: Float, amountY: Float): Boolean = {
       // amountY: +1 down, -1 up (usually)
       val factor   = 1.0f + (amountY * zoomStep)
@@ -29,12 +29,14 @@ final class WorldCameraController(
     }
   }
 
+  val inputProcessor: InputAdapter = cameraInput
+
   def installInputProcessor(): Unit = {
-    Gdx.input.setInputProcessor(inputProcessor)
+    Gdx.input.setInputProcessor(cameraInput)
   }
 
   def uninstallInputProcessor(): Unit = {
-    if (Gdx.input.getInputProcessor eq inputProcessor) {
+    if (Gdx.input.getInputProcessor eq cameraInput) {
       Gdx.input.setInputProcessor(null)
     }
   }

@@ -1,6 +1,6 @@
 package com.foobuilders.screens.world
 
-import com.badlogic.gdx.Gdx
+import com.badlogic.gdx.{Gdx, Input, InputAdapter, InputMultiplexer}
 import com.badlogic.gdx.ScreenAdapter
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.graphics.GL20
@@ -8,7 +8,8 @@ import com.badlogic.gdx.graphics.OrthographicCamera
 import com.badlogic.gdx.graphics.g2d.BitmapFont
 import com.badlogic.gdx.graphics.g2d.SpriteBatch
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer
-import com.foobuilders.world.entities.{GridPosition, Human}
+import com.badlogic.gdx.math.Vector3
+import com.foobuilders.world.entities.{EntityId, GridPosition, Human, MoveToAction}
 import com.foobuilders.world.{VoxelMap, WorldGenerator, WorldSimulation, WorldState}
 import com.foobuilders.world.tiles.{MaterialRegistry, Materials}
 
@@ -51,12 +52,35 @@ final class WorldScreen extends ScreenAdapter {
   private val uiFont           = new BitmapFont()
   private val gridRenderer     = GridRenderer(cellSize = cellSize, gridHalfCells = gridHalfCells)
   private val hoverHighlighter = HoverCellHighlighter(cellSize = cellSize, gridHalfCells = gridHalfCells)
+  private val tmpWorld         = new Vector3()
 
   private var activeLevel: Int = 0
   private var lastSimTicks     = 0
+  private var selectedEntity   = Option.empty[EntityId]
+
+  private var inputMultiplexer: InputMultiplexer = _
+
+  private val worldInput = new InputAdapter {
+    override def touchDown(screenX: Int, screenY: Int, pointer: Int, button: Int): Boolean = {
+      screenToCell(screenX, screenY) match {
+        case None => false
+        case Some((cellX, cellY)) =>
+          button match {
+            case Input.Buttons.LEFT  =>
+              selectEntityAt(cellX, cellY)
+              true
+            case Input.Buttons.RIGHT =>
+              issueMoveOrder(cellX, cellY)
+              true
+            case _ => false
+          }
+      }
+    }
+  }
 
   override def show(): Unit = {
-    cameraController.installInputProcessor()
+    inputMultiplexer = new InputMultiplexer(worldInput, cameraController.inputProcessor)
+    Gdx.input.setInputProcessor(inputMultiplexer)
     cameraController.setDefaultCameraPose()
 
     // Default world: flat ground across all chunks with air above
@@ -84,7 +108,8 @@ final class WorldScreen extends ScreenAdapter {
     shapes.setProjectionMatrix(cameraController.camera.combined)
 
     tileRenderer.render(shapes, activeLevel = activeLevel, surfaceLevel = surfaceLevel, fogConfig = fogConfig)
-    entityRenderer.render(shapes, worldState.entities.snapshots)
+    val entitySnapshots = worldState.entities.snapshots
+    entityRenderer.render(shapes, entitySnapshots, selectedEntity)
     gridRenderer.render(shapes, color = new Color(0.18f, 0.20f, 0.26f, 1.0f))
     gridRenderer.renderAxes(
       shapes,
@@ -109,7 +134,7 @@ final class WorldScreen extends ScreenAdapter {
     }
 
     val hoveredEntity = hoveredCell.flatMap { case (cellX, cellY) =>
-      worldState.entities.snapshots.find(e =>
+      entitySnapshots.find(e =>
         e.position.x == cellX && e.position.y == cellY && e.position.level == activeLevel
       )
     }
@@ -120,6 +145,12 @@ final class WorldScreen extends ScreenAdapter {
       case None => "Entity: (none)"
     }
 
+    val selectionInfo = selectedEntity.flatMap(id => entitySnapshots.find(_.id == id)) match {
+      case Some(entity) =>
+        s"Selected: ${entity.definition.kind}#${entity.id.value}"
+      case None => "Selected: (none)"
+    }
+
     val simInfo =
       s"Sim: ${simulation.totalTicks} ticks (+$lastSimTicks) | Active level: $activeLevel / ${levels - 1} | Surface: $surfaceLevel"
 
@@ -128,7 +159,8 @@ final class WorldScreen extends ScreenAdapter {
     uiFont.setColor(1.0f, 1.0f, 1.0f, 1.0f)
     uiFont.draw(uiBatch, tileInfo, 12.0f, uiCamera.viewportHeight - 12.0f)
     uiFont.draw(uiBatch, entityInfo, 12.0f, uiCamera.viewportHeight - 32.0f)
-    uiFont.draw(uiBatch, simInfo, 12.0f, uiCamera.viewportHeight - 52.0f)
+    uiFont.draw(uiBatch, selectionInfo, 12.0f, uiCamera.viewportHeight - 52.0f)
+    uiFont.draw(uiBatch, simInfo, 12.0f, uiCamera.viewportHeight - 72.0f)
     uiBatch.end()
   }
 
@@ -140,13 +172,55 @@ final class WorldScreen extends ScreenAdapter {
   }
 
   override def hide(): Unit = {
-    cameraController.uninstallInputProcessor()
+    if (Gdx.input.getInputProcessor eq inputMultiplexer) {
+      Gdx.input.setInputProcessor(null)
+    }
   }
 
   override def dispose(): Unit = {
     shapes.dispose()
     uiBatch.dispose()
     uiFont.dispose()
+  }
+
+  private def screenToCell(screenX: Int, screenY: Int): Option[(Int, Int)] = {
+    tmpWorld.set(screenX.toFloat, screenY.toFloat, 0.0f)
+    cameraController.camera.unproject(tmpWorld)
+
+    val cellX = Math.floor(tmpWorld.x / cellSize.toDouble).toInt
+    val cellY = Math.floor(tmpWorld.y / cellSize.toDouble).toInt
+
+    if (!voxelMap.inBounds(cellX, cellY, activeLevel)) None else Some((cellX, cellY))
+  }
+
+  private def selectEntityAt(cellX: Int, cellY: Int): Unit = {
+    val nowSeconds = worldState.totalElapsedSeconds
+    val previous   = selectedEntity
+    val maybeEntity = worldState.entities.snapshots.find(e =>
+      e.position.x == cellX && e.position.y == cellY && e.position.level == activeLevel
+    )
+
+    // Deselect previous if selecting a different entity or empty space
+    previous.filter(id => maybeEntity.forall(_.id != id)).foreach { id =>
+      worldState.entities.setSelected(id, selectedFlag = false, nowSeconds = nowSeconds)
+    }
+
+    selectedEntity = maybeEntity.map(_.id)
+
+    selectedEntity.foreach { id =>
+      worldState.entities.setSelected(id, selectedFlag = true, nowSeconds = nowSeconds)
+    }
+  }
+
+  private def issueMoveOrder(cellX: Int, cellY: Int): Unit = {
+    val target = GridPosition(cellX, cellY, activeLevel)
+    if (!materialRegistry.resolve(voxelMap.materialAt(cellX, cellY, activeLevel)).isWalkable) return
+
+    val append = Gdx.input.isKeyPressed(Input.Keys.SHIFT_LEFT) || Gdx.input.isKeyPressed(Input.Keys.SHIFT_RIGHT)
+
+    selectedEntity.foreach { id =>
+      worldState.entities.command(id, MoveToAction(target), append = append)
+    }
   }
 
   private def updateLevelHotkeys(): Unit = {
@@ -162,6 +236,6 @@ final class WorldScreen extends ScreenAdapter {
 
   private def spawnTestHumans(): Unit = {
     val startPosition = GridPosition(0, 0, surfaceLevel)
-    worldState.entities.spawn(Human.definition, startPosition, Human.randomWalker())
+    worldState.entities.spawn(Human.definition, startPosition, Human.commandable())
   }
 }
