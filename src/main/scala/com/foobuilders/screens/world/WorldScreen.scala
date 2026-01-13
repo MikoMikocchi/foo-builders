@@ -8,6 +8,7 @@ import com.badlogic.gdx.graphics.OrthographicCamera
 import com.badlogic.gdx.graphics.g2d.BitmapFont
 import com.badlogic.gdx.graphics.g2d.SpriteBatch
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer
+import com.foobuilders.world.entities.{GridPosition, Human}
 import com.foobuilders.world.{VoxelMap, WorldGenerator, WorldSimulation, WorldState}
 import com.foobuilders.world.tiles.{MaterialRegistry, Materials}
 
@@ -31,7 +32,8 @@ final class WorldScreen extends ScreenAdapter {
 
   private val materialRegistry = MaterialRegistry.default
   private val tileRenderer     = TileRenderer(cellSize = cellSize, map = voxelMap, materials = materialRegistry)
-  private val worldState       = new WorldState(voxelMap)
+  private val entityRenderer   = EntityRenderer(cellSize = cellSize)
+  private val worldState       = new WorldState(voxelMap, materialRegistry)
   private val simulation       = new WorldSimulation(worldState, ticksPerSecond = 6.0f)
 
   private val cameraController = WorldCameraController(
@@ -60,6 +62,8 @@ final class WorldScreen extends ScreenAdapter {
     // Default world: flat ground across all chunks with air above
     WorldGenerator.flatGround(voxelMap, Materials.Grass.id, surfaceLevel = surfaceLevel)
     activeLevel = surfaceLevel
+
+    spawnTestHumans()
   }
 
   override def render(delta: Float): Unit = {
@@ -80,6 +84,7 @@ final class WorldScreen extends ScreenAdapter {
     shapes.setProjectionMatrix(cameraController.camera.combined)
 
     tileRenderer.render(shapes, activeLevel = activeLevel, surfaceLevel = surfaceLevel, fogConfig = fogConfig)
+    entityRenderer.render(shapes, worldState.entities.snapshots)
     gridRenderer.render(shapes, color = new Color(0.18f, 0.20f, 0.26f, 1.0f))
     gridRenderer.renderAxes(
       shapes,
@@ -92,26 +97,38 @@ final class WorldScreen extends ScreenAdapter {
       color = new Color(0.95f, 0.85f, 0.20f, 1.0f)
     )
 
-    // Debug overlay: hovered tile info
-    val infoText =
-      hoverHighlighter.hoveredCell(cameraController.camera) match {
-        case None => s"Tile: (out of bounds) | Level: $activeLevel"
-        case Some((cellX, cellY)) =>
-          val matId = voxelMap.materialAt(cellX, cellY, activeLevel)
-          val mat   = materialRegistry.resolve(matId)
-          s"Tile: ($cellX,$cellY,$activeLevel) | Material: ${mat.displayName} (${matId.value})"
-      }
+    // Debug overlay: hovered tile + entity info
+    val hoveredCell = hoverHighlighter.hoveredCell(cameraController.camera)
+
+    val tileInfo = hoveredCell match {
+      case None => s"Tile: (out of bounds) | Level: $activeLevel"
+      case Some((cellX, cellY)) =>
+        val matId = voxelMap.materialAt(cellX, cellY, activeLevel)
+        val mat   = materialRegistry.resolve(matId)
+        s"Tile: ($cellX,$cellY,$activeLevel) | Material: ${mat.displayName} (${matId.value})"
+    }
+
+    val hoveredEntity = hoveredCell.flatMap { case (cellX, cellY) =>
+      worldState.entities.snapshots.find(e =>
+        e.position.x == cellX && e.position.y == cellY && e.position.level == activeLevel
+      )
+    }
+
+    val entityInfo = hoveredEntity match {
+      case Some(entity) =>
+        s"Entity: ${entity.definition.kind}#${entity.id.value} @ (${entity.position.x},${entity.position.y},${entity.position.level})"
+      case None => "Entity: (none)"
+    }
+
+    val simInfo =
+      s"Sim: ${simulation.totalTicks} ticks (+$lastSimTicks) | Active level: $activeLevel / ${levels - 1} | Surface: $surfaceLevel"
 
     uiBatch.setProjectionMatrix(uiCamera.combined)
     uiBatch.begin()
     uiFont.setColor(1.0f, 1.0f, 1.0f, 1.0f)
-    uiFont.draw(uiBatch, infoText, 12.0f, uiCamera.viewportHeight - 12.0f)
-    uiFont.draw(
-      uiBatch,
-      s"Sim: ${simulation.totalTicks} ticks (+$lastSimTicks) | Active level: $activeLevel / ${levels - 1} | Surface: $surfaceLevel",
-      12.0f,
-      uiCamera.viewportHeight - 32.0f
-    )
+    uiFont.draw(uiBatch, tileInfo, 12.0f, uiCamera.viewportHeight - 12.0f)
+    uiFont.draw(uiBatch, entityInfo, 12.0f, uiCamera.viewportHeight - 32.0f)
+    uiFont.draw(uiBatch, simInfo, 12.0f, uiCamera.viewportHeight - 52.0f)
     uiBatch.end()
   }
 
@@ -141,5 +158,10 @@ final class WorldScreen extends ScreenAdapter {
     if (Gdx.input.isKeyJustPressed(Input.Keys.PAGE_DOWN) || Gdx.input.isKeyJustPressed(Input.Keys.Q)) {
       activeLevel = (activeLevel - 1).max(0)
     }
+  }
+
+  private def spawnTestHumans(): Unit = {
+    val startPosition = GridPosition(0, 0, surfaceLevel)
+    worldState.entities.spawn(Human.definition, startPosition, Human.randomWalker())
   }
 }
