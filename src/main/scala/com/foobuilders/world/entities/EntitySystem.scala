@@ -19,7 +19,7 @@ final class EntitySystem(
     seed: Long = System.currentTimeMillis()
 ) {
   private val entities = mutable.LinkedHashMap.empty[EntityId, EntityInstance]
-  private val rng       = new Random(seed)
+  private val rng      = new Random(seed)
 
   private var nextId: Long = 1L
 

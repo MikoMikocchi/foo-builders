@@ -26,7 +26,7 @@ final case class EntityPerception(id: EntityId, position: GridPosition, definiti
 
 sealed trait MoveIntent
 object MoveIntent {
-  case object Stay extends MoveIntent
+  case object Stay                                     extends MoveIntent
   final case class Step(dx: Int, dy: Int, dz: Int = 0) extends MoveIntent
 }
 
