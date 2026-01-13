@@ -31,12 +31,24 @@ final class RandomWalkBrain(stepCooldownTicks: Int) extends EntityBrain {
     val directions = List((1, 0), (-1, 0), (0, 1), (0, -1), (0, 0))
 
     val maybeStep = context.random.shuffle(directions).collectFirst {
-      case (dx, dy) if context.canOccupyFor(self.id, self.position.translate(dx, dy)) => (dx, dy)
-    }
+      case (dx, dy) =>
+        val targetLevel = surfaceLevelAt(self.position.x + dx, self.position.y + dy, context)
+        val nextPos     = GridPosition(self.position.x + dx, self.position.y + dy, targetLevel)
+        if (context.canOccupyFor(self.id, nextPos)) Some(nextPos) else None
+    }.flatten
 
     maybeStep match {
-      case Some((dx, dy)) => EntityIntent(MoveIntent.Step(dx, dy))
-      case None           => EntityIntent.Idle
+      case Some(nextPos) =>
+        val dx = nextPos.x - self.position.x
+        val dy = nextPos.y - self.position.y
+        val dz = nextPos.level - self.position.level
+        EntityIntent(MoveIntent.Step(dx, dy, dz))
+      case None => EntityIntent.Idle
     }
+  }
+
+  private def surfaceLevelAt(cellX: Int, cellY: Int, context: EntityContext): Int = {
+    val height = math.round(context.map.columnMetadataAt(cellX, cellY).height)
+    height.max(0).min(context.map.depth - 1)
   }
 }

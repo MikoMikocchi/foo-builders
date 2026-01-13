@@ -62,4 +62,32 @@ final class VoxelMapTest {
     // Above surface is air
     assertEquals(Materials.Air.id, map.materialAt(0, 0, surfaceLvl + 1))
   }
+
+  @Test
+  def gentleHillsVaryHeights(): Unit = {
+    val baseLevel = 5
+    val map       = VoxelMap(chunkSize = 4, chunkRadius = 1, levels = 12, defaultMaterial = Materials.Air.id)
+
+    WorldGenerator.gentleHills(
+      map,
+      surfaceMaterial = Materials.Grass.id,
+      baseSurfaceLevel = baseLevel,
+      amplitude = 3,
+      frequency = 0.35f,
+      seed = 999L
+    )
+
+    val samples = Seq((-2, -2), (0, 0), (2, 2), (3, -1)).map { case (x, y) =>
+      map.columnMetadataAt(x, y).height.toInt
+    }
+
+    assertTrue(samples.min >= 0)
+    assertTrue(samples.max <= map.depth - 1)
+    assertTrue(samples.distinct.size >= 2)
+
+    val centerSurface = map.columnMetadataAt(0, 0).height.toInt
+    assertEquals(Materials.Grass.id, map.materialAt(0, 0, centerSurface))
+    if (centerSurface > 0)
+      assertEquals(Materials.Dirt.id, map.materialAt(0, 0, centerSurface - 1))
+  }
 }

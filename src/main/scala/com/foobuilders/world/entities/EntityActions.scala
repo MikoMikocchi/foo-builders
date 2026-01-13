@@ -60,24 +60,31 @@ final case class MoveToAction(target: GridPosition) extends EntityAction {
 
     val dx = target.x - self.position.x
     val dy = target.y - self.position.y
-    val dz = target.level - self.position.level
 
     val stepX = math.signum(dx).toInt
     val stepY = math.signum(dy).toInt
-    val stepZ = math.signum(dz).toInt
+
+    val nextBase    = self.position.translate(stepX, stepY, dz = 0)
+    val targetLevel = surfaceLevelAt(nextBase.x, nextBase.y, context)
+    val nextPos     = GridPosition(nextBase.x, nextBase.y, targetLevel)
+
+    val stepZ = nextPos.level - self.position.level
 
     if (stepX == 0 && stepY == 0 && stepZ == 0) {
       return ActionResult(EntityIntent.Idle, completed = true)
     }
 
-    val nextPos = self.position.translate(stepX, stepY, stepZ)
-
     if (context.canOccupyFor(self.id, nextPos)) {
       val intent  = EntityIntent(MoveIntent.Step(stepX, stepY, stepZ))
-      val reached = nextPos == target
+      val reached = nextPos.x == target.x && nextPos.y == target.y && nextPos.level == target.level
       ActionResult(intent, completed = reached)
     } else {
       ActionResult(EntityIntent.Idle, completed = false)
     }
+  }
+
+  private def surfaceLevelAt(cellX: Int, cellY: Int, context: EntityContext): Int = {
+    val height = math.round(context.map.columnMetadataAt(cellX, cellY).height)
+    height.max(0).min(context.map.depth - 1)
   }
 }

@@ -14,11 +14,11 @@ import com.foobuilders.world.{VoxelMap, WorldGenerator, WorldSimulation, WorldSt
 import com.foobuilders.world.tiles.{MaterialRegistry, Materials}
 
 final class WorldScreen extends ScreenAdapter {
-  private val cellSize     = 1.0f
-  private val chunkSize    = 16
-  private val chunkRadius  = 4
-  private val levels       = 48
-  private val surfaceLevel = 24
+  private val cellSize         = 1.0f
+  private val chunkSize        = 16
+  private val chunkRadius      = 4
+  private val levels           = 48
+  private val baseSurfaceLevel = 24
 
   /** Current fog config - can be swapped for day/night cycle */
   private var fogConfig: FogConfig = FogConfig.day
@@ -83,17 +83,23 @@ final class WorldScreen extends ScreenAdapter {
     Gdx.input.setInputProcessor(inputMultiplexer)
     cameraController.setDefaultCameraPose()
 
-    // Default world: flat ground across all chunks with air above
-    WorldGenerator.flatGround(voxelMap, Materials.Grass.id, surfaceLevel = surfaceLevel)
-    activeLevel = surfaceLevel
+    WorldGenerator.gentleHills(
+      voxelMap,
+      surfaceMaterial = Materials.Grass.id,
+      baseSurfaceLevel = baseSurfaceLevel,
+      amplitude = 4,
+      frequency = 0.055f,
+      seed = 4242L
+    )
+    activeLevel = surfaceLevelAt(0, 0)
 
-    spawnTestHumans()
+    spawnTestHumans(activeLevel)
   }
 
   override def render(delta: Float): Unit = {
     // Clear to appropriate fog color based on current view level
     val clearColor =
-      if (activeLevel > surfaceLevel) fogConfig.skyFogColor
+      if (activeLevel > baseSurfaceLevel) fogConfig.skyFogColor
       else fogConfig.depthFogColor
     Gdx.gl.glClearColor(clearColor.r, clearColor.g, clearColor.b, 1.0f)
     Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT)
@@ -107,7 +113,7 @@ final class WorldScreen extends ScreenAdapter {
 
     shapes.setProjectionMatrix(cameraController.camera.combined)
 
-    tileRenderer.render(shapes, activeLevel = activeLevel, surfaceLevel = surfaceLevel, fogConfig = fogConfig)
+    tileRenderer.render(shapes, activeLevel = activeLevel, surfaceLevel = baseSurfaceLevel, fogConfig = fogConfig)
     val entitySnapshots = worldState.entities.snapshots
     val nowSeconds      = worldState.totalElapsedSeconds
     entityRenderer.render(
@@ -116,7 +122,7 @@ final class WorldScreen extends ScreenAdapter {
       selectedEntity,
       nowSeconds,
       activeLevel = activeLevel,
-      surfaceLevel = surfaceLevel,
+      surfaceLevel = baseSurfaceLevel,
       fogConfig = fogConfig
     )
     gridRenderer.render(shapes, color = new Color(0.18f, 0.20f, 0.26f, 1.0f))
@@ -161,7 +167,7 @@ final class WorldScreen extends ScreenAdapter {
     }
 
     val simInfo =
-      s"Sim: ${simulation.totalTicks} ticks (+$lastSimTicks) | Active level: $activeLevel / ${levels - 1} | Surface: $surfaceLevel"
+      s"Sim: ${simulation.totalTicks} ticks (+$lastSimTicks) | Active level: $activeLevel / ${levels - 1} | Surface ref: $baseSurfaceLevel"
 
     uiBatch.setProjectionMatrix(uiCamera.combined)
     uiBatch.begin()
@@ -222,8 +228,9 @@ final class WorldScreen extends ScreenAdapter {
   }
 
   private def issueMoveOrder(cellX: Int, cellY: Int): Unit = {
-    val target = GridPosition(cellX, cellY, activeLevel)
-    if (!materialRegistry.resolve(voxelMap.materialAt(cellX, cellY, activeLevel)).isWalkable) return
+    val targetLevel = surfaceLevelAt(cellX, cellY)
+    val target      = GridPosition(cellX, cellY, targetLevel)
+    if (!materialRegistry.resolve(voxelMap.materialAt(cellX, cellY, targetLevel)).isWalkable) return
 
     val append = Gdx.input.isKeyPressed(Input.Keys.SHIFT_LEFT) || Gdx.input.isKeyPressed(Input.Keys.SHIFT_RIGHT)
 
@@ -243,8 +250,13 @@ final class WorldScreen extends ScreenAdapter {
     }
   }
 
-  private def spawnTestHumans(): Unit = {
-    val startPosition = GridPosition(0, 0, surfaceLevel)
+  private def spawnTestHumans(startLevel: Int): Unit = {
+    val startPosition = GridPosition(0, 0, startLevel)
     worldState.entities.spawn(Human.definition, startPosition, Human.commandable())
+  }
+
+  private def surfaceLevelAt(cellX: Int, cellY: Int): Int = {
+    val height = math.round(voxelMap.columnMetadataAt(cellX, cellY).height)
+    height.max(0).min(levels - 1)
   }
 }
